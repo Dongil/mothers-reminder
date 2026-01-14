@@ -30,9 +30,18 @@ export function formatDateShort(date: string | Date): string {
 /**
  * 시간 포맷 - "오후 3시 30분"
  */
-export function formatTime(time: string): string {
-  // "15:30" 형식의 시간 문자열을 파싱
-  const [hours, minutes] = time.split(':').map(Number);
+export function formatTime(time: string | Date): string {
+  let hours: number;
+  let minutes: number;
+
+  if (time instanceof Date) {
+    hours = time.getHours();
+    minutes = time.getMinutes();
+  } else {
+    // "15:30" 형식의 시간 문자열을 파싱
+    [hours, minutes] = time.split(':').map(Number);
+  }
+
   const period = hours < 12 ? '오전' : '오후';
   const hour12 = hours % 12 || 12;
 

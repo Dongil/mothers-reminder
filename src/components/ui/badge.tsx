@@ -18,6 +18,7 @@ const badgeVariants = cva(
         dday: 'border-transparent bg-blue-100 text-blue-800',
       },
       size: {
+        sm: 'text-xs px-2 py-0.5',
         default: 'text-sm px-3 py-1',
         lg: 'text-base px-4 py-1.5',
         tablet: 'text-lg px-5 py-2',
