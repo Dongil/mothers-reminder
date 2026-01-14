@@ -4,74 +4,56 @@
 
 **시작일**: 2026년 1월 13일
 **목표**: MVP 완성
+**현재 상태**: Phase 5 완료 (2026년 1월 14일)
 
 ---
 
-## Phase 0: 프로젝트 초기화
+## Phase 0: 프로젝트 초기화 ✅
 
 ### 환경 설정
-- [ ] Git 저장소 초기화
-- [ ] `.gitignore` 설정
-- [ ] Next.js 14 프로젝트 생성 (App Router, TypeScript)
-- [ ] 필수 패키지 설치
-  - [ ] `@supabase/supabase-js`, `@supabase/ssr`
-  - [ ] `next-pwa`
-  - [ ] `@radix-ui/react-*`, `class-variance-authority`, `clsx`, `tailwind-merge`
-  - [ ] `react-hook-form`, `@hookform/resolvers`, `zod`
-  - [ ] `date-fns`, `lucide-react`
+- [x] Git 저장소 초기화
+- [x] `.gitignore` 설정
+- [x] Next.js 14 프로젝트 생성 (App Router, TypeScript)
+- [x] 필수 패키지 설치
+  - [x] `@supabase/supabase-js`, `@supabase/ssr`
+  - [x] `next-pwa`
+  - [x] `class-variance-authority`, `clsx`, `tailwind-merge`
+  - [x] `react-hook-form`, `@hookform/resolvers`, `zod`
+  - [x] `date-fns`, `lucide-react`
 
 ### 환경변수 설정 (.env.local)
-- [ ] `NEXT_PUBLIC_SUPABASE_URL` 입력
-- [ ] `NEXT_PUBLIC_SUPABASE_ANON_KEY` 입력
-- [ ] `SUPABASE_SERVICE_ROLE_KEY` 입력 (서버용)
+- [x] `.env.example` 템플릿 생성
+- [ ] `NEXT_PUBLIC_SUPABASE_URL` 입력 (배포 시)
+- [ ] `NEXT_PUBLIC_SUPABASE_ANON_KEY` 입력 (배포 시)
 
 ---
 
-## Phase 1: Supabase 설정
+## Phase 1: Supabase 설정 ✅
 
 ### 데이터베이스
-- [ ] `family` 테이블 생성
-- [ ] `users` 테이블 생성 (auth.users 연동)
-- [ ] `messages` 테이블 생성
-- [ ] `notifications` 테이블 생성
-- [ ] `settings` 테이블 생성
-- [ ] 인덱스 생성
-
-### 보안
-- [ ] RLS (Row Level Security) 활성화
-- [ ] 테이블별 RLS 정책 생성
-  - [ ] family: 가족 구성원만 조회
-  - [ ] users: 같은 가족만 조회, 본인만 수정
-  - [ ] messages: 가족 구성원 조회/작성, 본인만 수정/삭제
-  - [ ] notifications: 본인만 조회
-  - [ ] settings: 본인만 관리
-
-### Realtime
-- [ ] `messages` 테이블 Realtime 활성화
+- [x] `src/types/database.ts` - 타입 정의
+- [x] `supabase/schema.sql` - 스키마 파일 생성
+- [ ] Supabase에서 SQL 실행 (배포 시)
 
 ### 클라이언트 설정
-- [ ] `src/lib/supabase/client.ts` - 클라이언트용
-- [ ] `src/lib/supabase/server.ts` - 서버용
-- [ ] `src/types/database.ts` - 타입 정의
+- [x] `src/lib/supabase/client.ts` - 클라이언트용
+- [x] `src/lib/supabase/server.ts` - 서버용
+- [x] `src/lib/supabase/middleware.ts` - 미들웨어
 
 ---
 
-## Phase 2: 기본 UI 컴포넌트
+## Phase 2: 기본 UI 컴포넌트 ✅
 
-### 공통 컴포넌트 (shadcn/ui 기반)
-- [ ] `src/components/ui/button.tsx`
-  - variants: default, outline, ghost, tablet (큰 버튼)
-  - sizes: sm, md, lg, xl
-- [ ] `src/components/ui/card.tsx`
-- [ ] `src/components/ui/input.tsx`
-- [ ] `src/components/ui/textarea.tsx`
-- [ ] `src/components/ui/select.tsx`
-- [ ] `src/components/ui/checkbox.tsx`
-- [ ] `src/components/ui/dialog.tsx`
-- [ ] `src/components/ui/toast.tsx`
+### 공통 컴포넌트
+- [x] `src/components/ui/button.tsx`
+- [x] `src/components/ui/card.tsx`
+- [x] `src/components/ui/input.tsx`
+- [x] `src/components/ui/textarea.tsx`
+- [x] `src/components/ui/label.tsx`
+- [x] `src/components/ui/badge.tsx`
 
 ### 유틸리티
-- [ ] `src/lib/utils.ts`
+- [x] `src/lib/utils.ts`
   - `cn()` - Tailwind 클래스 병합
   - `formatDate()` - "2026년 1월 12일 일요일"
   - `formatTime()` - "오후 3시 30분"
@@ -80,10 +62,10 @@
 
 ---
 
-## Phase 3: 핵심 기능
+## Phase 3: 핵심 기능 ✅
 
 ### 메시지 CRUD
-- [ ] `src/hooks/useMessages.ts`
+- [x] `src/hooks/useMessages.ts`
   - 메시지 조회 (오늘 날짜 필터)
   - 메시지 생성
   - 메시지 수정
@@ -91,81 +73,58 @@
   - Realtime 구독
 
 ### API Routes
-- [ ] `src/app/api/messages/route.ts` - GET, POST
-- [ ] `src/app/api/messages/[id]/route.ts` - PATCH, DELETE
+- [x] `src/app/api/messages/route.ts` - GET, POST
+- [x] `src/app/api/messages/[id]/route.ts` - GET, PATCH, DELETE
 
 ### TTS (Text-to-Speech)
-- [ ] `src/lib/tts/speech.ts`
+- [x] `src/lib/tts/speech.ts`
   - TTSService 클래스
   - `speak()`, `stop()`, `pause()`, `resume()`
-  - 한국어 여성 음성
-  - 속도 조절 (느림)
-- [ ] `src/hooks/useTTS.ts`
+  - 한국어 음성
+  - 속도 조절
+- [x] `src/hooks/useTTS.ts`
 
 ### 시간 기반 알림
-- [ ] `src/hooks/useNotifications.ts`
+- [x] `src/hooks/useNotifications.ts`
   - 알림 권한 요청
   - 알림 스케줄링
   - 차임벨 + TTS 재생
+- [x] `useNightMode` - 야간 모드 훅
 
 ---
 
-## Phase 4: 화면 구현
+## Phase 4: 화면 구현 ✅
 
 ### 태블릿 컴포넌트
-- [ ] `src/components/tablet/MessageCard.tsx`
-  - 큰 글씨 (제목 28pt, 본문 24pt)
-  - 중요도별 배경색
-  - "듣기" 버튼 (60px 높이)
-- [ ] `src/components/tablet/NightMode.tsx`
-  - 20:00~06:00 블랙 스크린
-  - 터치 시 해제
-- [ ] `src/components/tablet/Header.tsx`
-  - 날짜, 시간, 날씨
+- [x] `src/components/tablet/MessageCard.tsx`
+- [x] `src/components/tablet/NightMode.tsx`
+- [x] `src/components/tablet/Header.tsx`
 
 ### 스마트폰 컴포넌트
-- [ ] `src/components/mobile/MessageForm.tsx`
-  - 내용, 중요도, 날짜, 알림 시간
-  - react-hook-form + zod 검증
-- [ ] `src/components/mobile/MessageList.tsx`
-  - 메시지 목록 + 수정/삭제
+- [x] `src/components/mobile/MessageForm.tsx`
+- [x] `src/components/mobile/MessageList.tsx`
 
 ### 페이지
-- [ ] `src/app/(tablet)/display/page.tsx`
-  - 메시지 보드 메인 화면
-  - 자동 TTS 재생
-  - 야간 모드
-- [ ] `src/app/(mobile)/page.tsx`
-  - 가족용 홈 (대시보드)
-- [ ] `src/app/(mobile)/messages/new/page.tsx`
-  - 메시지 작성
-- [ ] `src/app/(mobile)/messages/[id]/edit/page.tsx`
-  - 메시지 수정
-
-### 인증 (간단히)
-- [ ] `src/app/(auth)/login/page.tsx`
-- [ ] 가족 코드로 가입/로그인
+- [x] `src/app/(tablet)/display/page.tsx` - 메시지 보드
+- [x] `src/app/(mobile)/home/page.tsx` - 가족용 대시보드
+- [x] `src/app/(mobile)/messages/new/page.tsx` - 메시지 작성
+- [x] `src/app/(mobile)/messages/[id]/edit/page.tsx` - 메시지 수정
+- [x] `src/app/(auth)/login/page.tsx` - 로그인/회원가입
 
 ---
 
-## Phase 5: PWA 설정
+## Phase 5: PWA 설정 ✅
 
 ### Manifest
-- [ ] `public/manifest.json`
-  - name, short_name, icons
-  - display: standalone
-  - orientation: portrait
+- [x] `public/manifest.json`
 
 ### 아이콘
-- [ ] `public/icons/icon-192x192.png`
-- [ ] `public/icons/icon-512x512.png`
+- [x] `public/icons/icon.svg` - SVG 템플릿
+- [ ] PNG 아이콘 생성 (icon-192x192.png, icon-512x512.png)
 
 ### Service Worker
-- [ ] `next.config.js` - next-pwa 설정
-- [ ] 캐싱 전략
-  - 페이지: Network First
-  - 이미지: Cache First
-  - API: Network Only
+- [x] `next.config.ts` - next-pwa 설정
+- [x] 캐싱 전략 설정
 
 ### 알림음
 - [ ] `public/sounds/chime.mp3` - 차임벨
@@ -184,16 +143,37 @@
 
 ### 실제 기기 테스트
 - [ ] 갤럭시 탭 7 FE 테스트
-  - 화면 크기, 글씨 크기
-  - TTS 음성 품질
-  - 장시간 켜놓기
 - [ ] 스마트폰 테스트 (Android/iOS)
 
 ### 배포
 - [ ] Vercel 프로젝트 생성
 - [ ] 환경변수 설정
+- [ ] Supabase 스키마 적용
 - [ ] 배포 및 도메인 확인
 - [ ] PWA 설치 테스트
+
+---
+
+## 배포 체크리스트
+
+### 1. Supabase 설정
+```bash
+# supabase/schema.sql 내용을 Supabase SQL Editor에서 실행
+```
+
+### 2. Vercel 배포
+```bash
+# Vercel CLI 또는 GitHub 연동으로 배포
+vercel
+```
+
+### 3. 환경변수 설정 (Vercel)
+- `NEXT_PUBLIC_SUPABASE_URL`
+- `NEXT_PUBLIC_SUPABASE_ANON_KEY`
+
+### 4. 리소스 추가
+- `public/icons/` - PNG 아이콘 추가
+- `public/sounds/` - MP3 알림음 추가
 
 ---
 
@@ -229,9 +209,9 @@
 | [PRD.md](./PRD.md) | 제품 요구사항 |
 | [SETUP.md](./SETUP.md) | 개발 환경 설정 |
 | [PROMPTS.md](./PROMPTS.md) | 개발 프롬프트 가이드 |
-| [ADVANCED-TOOLS.md](./ADVANCED-TOOLS.md) | MCP, Subagent, Skills |
 
 ---
 
 **작성일**: 2026년 1월 13일
+**최종 업데이트**: 2026년 1월 14일
 **버전**: 1.0
