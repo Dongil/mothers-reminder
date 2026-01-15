@@ -9,10 +9,22 @@ import { Label } from '@/components/ui/label';
 import { createClient } from '@/lib/supabase/client';
 
 type AuthMode = 'login' | 'register';
+type RegisterMode = 'join' | 'create';
+
+// 랜덤 가족 코드 생성
+function generateFamilyCode(): string {
+  const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+  let code = '';
+  for (let i = 0; i < 6; i++) {
+    code += chars.charAt(Math.floor(Math.random() * chars.length));
+  }
+  return code;
+}
 
 export default function LoginPage() {
   const router = useRouter();
   const [mode, setMode] = useState<AuthMode>('login');
+  const [registerMode, setRegisterMode] = useState<RegisterMode>('join');
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
 
@@ -21,6 +33,7 @@ export default function LoginPage() {
   const [password, setPassword] = useState('');
   const [name, setName] = useState('');
   const [familyCode, setFamilyCode] = useState('');
+  const [familyName, setFamilyName] = useState('');
 
   const supabase = createClient();
 
@@ -53,19 +66,42 @@ export default function LoginPage() {
     setError('');
 
     try {
-      // 1. 가족 코드 확인
-      const { data: familyData, error: familyError } = await supabase
-        .from('family')
-        .select('*')
-        .eq('code', familyCode)
-        .single();
+      let familyId: string;
 
-      const family = familyData as unknown as { id: string } | null;
-      if (familyError || !family) {
-        throw new Error('유효하지 않은 가족 코드입니다');
+      if (registerMode === 'join') {
+        // 기존 가족 참여
+        const { data: familyData, error: familyError } = await supabase
+          .from('family')
+          .select('*')
+          .eq('code', familyCode)
+          .single();
+
+        const family = familyData as unknown as { id: string } | null;
+        if (familyError || !family) {
+          throw new Error('유효하지 않은 가족 코드입니다');
+        }
+        familyId = family.id;
+      } else {
+        // 새 가족 만들기
+        const newCode = generateFamilyCode();
+        const { data: newFamily, error: createError } = await supabase
+          .from('family')
+          .insert({
+            name: familyName,
+            code: newCode,
+          } as never)
+          .select()
+          .single();
+
+        if (createError || !newFamily) {
+          throw new Error('가족 생성에 실패했습니다');
+        }
+        familyId = (newFamily as unknown as { id: string }).id;
+        // 생성된 코드를 상태에 저장 (나중에 표시용)
+        setFamilyCode(newCode);
       }
 
-      // 2. 회원가입
+      // 회원가입
       const { data: authData, error: authError } = await supabase.auth.signUp({
         email,
         password,
@@ -75,7 +111,7 @@ export default function LoginPage() {
         throw authError;
       }
 
-      // 3. 사용자 프로필 생성
+      // 사용자 프로필 생성
       if (authData.user) {
         const { error: profileError } = await supabase
           .from('users')
@@ -83,8 +119,8 @@ export default function LoginPage() {
             id: authData.user.id,
             email,
             name,
-            family_id: family.id,
-            role: 'member',
+            family_id: familyId,
+            role: registerMode === 'create' ? 'admin' : 'member',
           } as never);
 
         if (profileError) {
@@ -186,23 +222,73 @@ export default function LoginPage() {
         {/* 회원가입 폼 */}
         {mode === 'register' && (
           <form onSubmit={handleRegister} className="space-y-4">
-            <div className="space-y-2">
-              <Label htmlFor="familyCode" className="flex items-center gap-2">
-                <Users className="w-4 h-4" />
-                가족 코드
-              </Label>
-              <Input
-                id="familyCode"
-                type="text"
-                placeholder="가족 코드를 입력하세요"
-                value={familyCode}
-                onChange={(e) => setFamilyCode(e.target.value)}
-                required
-              />
-              <p className="text-xs text-gray-500">
-                가족에게 받은 초대 코드를 입력하세요
-              </p>
+            {/* 가입 모드 선택 */}
+            <div className="flex gap-2 p-1 bg-gray-100 rounded-lg">
+              <button
+                type="button"
+                className={`flex-1 py-2 rounded-md text-sm font-medium transition-colors ${
+                  registerMode === 'create'
+                    ? 'bg-blue-600 text-white'
+                    : 'text-gray-500'
+                }`}
+                onClick={() => setRegisterMode('create')}
+              >
+                새 가족 만들기
+              </button>
+              <button
+                type="button"
+                className={`flex-1 py-2 rounded-md text-sm font-medium transition-colors ${
+                  registerMode === 'join'
+                    ? 'bg-blue-600 text-white'
+                    : 'text-gray-500'
+                }`}
+                onClick={() => setRegisterMode('join')}
+              >
+                가족 참여하기
+              </button>
             </div>
+
+            {/* 새 가족 만들기 */}
+            {registerMode === 'create' && (
+              <div className="space-y-2">
+                <Label htmlFor="familyName" className="flex items-center gap-2">
+                  <Users className="w-4 h-4" />
+                  가족 이름
+                </Label>
+                <Input
+                  id="familyName"
+                  type="text"
+                  placeholder="예: 김씨 가족"
+                  value={familyName}
+                  onChange={(e) => setFamilyName(e.target.value)}
+                  required
+                />
+                <p className="text-xs text-gray-500">
+                  가입 후 가족 코드가 생성됩니다
+                </p>
+              </div>
+            )}
+
+            {/* 기존 가족 참여 */}
+            {registerMode === 'join' && (
+              <div className="space-y-2">
+                <Label htmlFor="familyCode" className="flex items-center gap-2">
+                  <Users className="w-4 h-4" />
+                  가족 코드
+                </Label>
+                <Input
+                  id="familyCode"
+                  type="text"
+                  placeholder="가족 코드를 입력하세요"
+                  value={familyCode}
+                  onChange={(e) => setFamilyCode(e.target.value)}
+                  required
+                />
+                <p className="text-xs text-gray-500">
+                  가족에게 받은 초대 코드를 입력하세요
+                </p>
+              </div>
+            )}
 
             <div className="space-y-2">
               <Label htmlFor="name">이름</Label>
@@ -248,7 +334,7 @@ export default function LoginPage() {
               className="w-full"
               disabled={isLoading}
             >
-              {isLoading ? '가입 중...' : '가입하기'}
+              {isLoading ? '가입 중...' : registerMode === 'create' ? '가족 만들고 가입' : '가입하기'}
             </Button>
           </form>
         )}
