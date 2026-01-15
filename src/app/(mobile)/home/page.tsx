@@ -1,6 +1,6 @@
 'use client';
 
-import React from 'react';
+import React, { useMemo } from 'react';
 import { useRouter } from 'next/navigation';
 import { Plus, MessageSquare, Settings, LogOut } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -10,8 +10,12 @@ import type { Message } from '@/types/database';
 
 export default function MobileHomePage() {
   const router = useRouter();
+
+  // 오늘 날짜를 메모이제이션하여 불필요한 리렌더링 방지
+  const today = useMemo(() => new Date(), []);
+
   const { messages, loading, deleteMessage } = useMessages({
-    date: new Date(),
+    date: today,
   });
 
   const handleNewMessage = () => {
