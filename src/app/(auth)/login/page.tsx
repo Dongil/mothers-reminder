@@ -93,8 +93,12 @@ export default function LoginPage() {
           .select()
           .single();
 
-        if (createError || !newFamily) {
-          throw new Error('가족 생성에 실패했습니다');
+        if (createError) {
+          console.error('Family creation error:', createError);
+          throw new Error(`가족 생성 실패: ${createError.message}`);
+        }
+        if (!newFamily) {
+          throw new Error('가족 생성에 실패했습니다 (데이터 없음)');
         }
         familyId = (newFamily as unknown as { id: string }).id;
         // 생성된 코드를 상태에 저장 (나중에 표시용)
