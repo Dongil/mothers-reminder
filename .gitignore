@@ -53,3 +53,5 @@ coverage/
 
 # Temp files
 tmpclaude-*
+
+.vercel

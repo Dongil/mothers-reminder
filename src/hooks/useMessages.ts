@@ -28,9 +28,14 @@ export function useMessages(options: UseMessagesOptions = {}): UseMessagesReturn
   const [error, setError] = useState<string | null>(null);
 
   const supabase = createClient();
+  const isReady = typeof window !== 'undefined' && supabase !== null;
 
   // 메시지 조회
   const fetchMessages = useCallback(async () => {
+    if (!isReady || !supabase) {
+      setLoading(false);
+      return;
+    }
     try {
       setLoading(true);
       setError(null);
@@ -68,12 +73,15 @@ export function useMessages(options: UseMessagesOptions = {}): UseMessagesReturn
     } finally {
       setLoading(false);
     }
-  }, [supabase, familyId, date]);
+  }, [isReady, supabase, familyId, date]);
 
   // 메시지 생성
   const createMessage = useCallback(async (
     messageData: Omit<MessageInsert, 'author_id' | 'family_id'>
   ): Promise<Message | null> => {
+    if (!isReady || !supabase) {
+      return null;
+    }
     try {
       // 현재 사용자 정보 가져오기
       const { data: { user } } = await supabase.auth.getUser();
@@ -116,13 +124,16 @@ export function useMessages(options: UseMessagesOptions = {}): UseMessagesReturn
       console.error('Failed to create message:', err);
       return null;
     }
-  }, [supabase]);
+  }, [isReady, supabase]);
 
   // 메시지 수정
   const updateMessage = useCallback(async (
     id: string,
     updates: MessageUpdate
   ): Promise<Message | null> => {
+    if (!isReady || !supabase) {
+      return null;
+    }
     try {
       const updateData = {
         ...updates,
@@ -147,10 +158,13 @@ export function useMessages(options: UseMessagesOptions = {}): UseMessagesReturn
       console.error('Failed to update message:', err);
       return null;
     }
-  }, [supabase]);
+  }, [isReady, supabase]);
 
   // 메시지 삭제
   const deleteMessage = useCallback(async (id: string): Promise<boolean> => {
+    if (!isReady || !supabase) {
+      return false;
+    }
     try {
       const { error: deleteError } = await supabase
         .from('messages')
@@ -168,16 +182,18 @@ export function useMessages(options: UseMessagesOptions = {}): UseMessagesReturn
       console.error('Failed to delete message:', err);
       return false;
     }
-  }, [supabase]);
+  }, [isReady, supabase]);
 
   // 초기 로드
   useEffect(() => {
-    fetchMessages();
-  }, [fetchMessages]);
+    if (isReady) {
+      fetchMessages();
+    }
+  }, [isReady, fetchMessages]);
 
   // Realtime 구독
   useEffect(() => {
-    if (!realtime || !familyId) return;
+    if (!isReady || !supabase || !realtime || !familyId) return;
 
     const channel = supabase
       .channel(`messages:family:${familyId}`)
@@ -210,7 +226,7 @@ export function useMessages(options: UseMessagesOptions = {}): UseMessagesReturn
     return () => {
       supabase.removeChannel(channel);
     };
-  }, [supabase, familyId, realtime]);
+  }, [isReady, supabase, familyId, realtime]);
 
   return {
     messages,
