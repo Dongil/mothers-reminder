@@ -39,6 +39,10 @@ export default function LoginPage() {
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!supabase) {
+      setError('서비스 연결에 실패했습니다');
+      return;
+    }
     setIsLoading(true);
     setError('');
 
@@ -62,6 +66,10 @@ export default function LoginPage() {
 
   const handleRegister = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!supabase) {
+      setError('서비스 연결에 실패했습니다');
+      return;
+    }
     setIsLoading(true);
     setError('');
 

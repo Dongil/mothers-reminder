@@ -23,6 +23,10 @@ export default function EditMessagePage({ params }: EditMessagePageProps) {
 
   useEffect(() => {
     const fetchMessage = async () => {
+      if (!supabase) {
+        setIsFetching(false);
+        return;
+      }
       const { data, error } = await supabase
         .from('messages')
         .select('*')
@@ -41,7 +45,7 @@ export default function EditMessagePage({ params }: EditMessagePageProps) {
     };
 
     fetchMessage();
-  }, [id, supabase, router]);
+  }, [id, router]);
 
   const handleSubmit = async (data: {
     content: string;
@@ -50,6 +54,10 @@ export default function EditMessagePage({ params }: EditMessagePageProps) {
     tts_enabled: boolean;
     tts_times: string[];
   }) => {
+    if (!supabase) {
+      alert('서비스 연결에 실패했습니다');
+      return;
+    }
     setIsLoading(true);
     try {
       const { error } = await supabase

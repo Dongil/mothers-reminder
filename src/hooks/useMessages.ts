@@ -26,9 +26,17 @@ export function useMessages(options: UseMessagesOptions = {}): UseMessagesReturn
   const [messages, setMessages] = useState<Message[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [isReady, setIsReady] = useState(false);
 
+  // 싱글톤 클라이언트 (매 렌더링마다 같은 인스턴스)
   const supabase = createClient();
-  const isReady = typeof window !== 'undefined' && supabase !== null;
+
+  // 클라이언트 사이드에서만 실행 (마운트 시 1회)
+  useEffect(() => {
+    if (typeof window !== 'undefined' && supabase) {
+      setIsReady(true);
+    }
+  }, []);
 
   // 메시지 조회
   const fetchMessages = useCallback(async () => {
@@ -73,7 +81,7 @@ export function useMessages(options: UseMessagesOptions = {}): UseMessagesReturn
     } finally {
       setLoading(false);
     }
-  }, [isReady, supabase, familyId, date]);
+  }, [isReady, familyId, date]);
 
   // 메시지 생성
   const createMessage = useCallback(async (
@@ -124,7 +132,7 @@ export function useMessages(options: UseMessagesOptions = {}): UseMessagesReturn
       console.error('Failed to create message:', err);
       return null;
     }
-  }, [isReady, supabase]);
+  }, [isReady]);
 
   // 메시지 수정
   const updateMessage = useCallback(async (
@@ -158,7 +166,7 @@ export function useMessages(options: UseMessagesOptions = {}): UseMessagesReturn
       console.error('Failed to update message:', err);
       return null;
     }
-  }, [isReady, supabase]);
+  }, [isReady]);
 
   // 메시지 삭제
   const deleteMessage = useCallback(async (id: string): Promise<boolean> => {
@@ -182,7 +190,7 @@ export function useMessages(options: UseMessagesOptions = {}): UseMessagesReturn
       console.error('Failed to delete message:', err);
       return false;
     }
-  }, [isReady, supabase]);
+  }, [isReady]);
 
   // 초기 로드
   useEffect(() => {
@@ -224,9 +232,9 @@ export function useMessages(options: UseMessagesOptions = {}): UseMessagesReturn
       .subscribe();
 
     return () => {
-      supabase.removeChannel(channel);
+      supabase?.removeChannel(channel);
     };
-  }, [isReady, supabase, familyId, realtime]);
+  }, [isReady, familyId, realtime]);
 
   return {
     messages,
