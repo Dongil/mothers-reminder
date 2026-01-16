@@ -1,13 +1,16 @@
 'use client';
 
-import React, { useEffect } from 'react';
+import React, { useEffect, useMemo } from 'react';
 import { Header, MessageCard, NightMode } from '@/components/tablet';
 import { useMessages, useTTS, useNightMode } from '@/hooks';
 import { useNotifications } from '@/hooks/useNotifications';
 
 export default function DisplayPage() {
+  // 오늘 날짜를 메모이제이션
+  const today = useMemo(() => new Date(), []);
+
   const { messages, loading } = useMessages({
-    date: new Date(),
+    date: today,
     realtime: true,
   });
 
