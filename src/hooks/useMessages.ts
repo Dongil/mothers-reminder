@@ -62,8 +62,9 @@ export function useMessages(options: UseMessagesOptions = {}): UseMessagesReturn
       // 날짜 필터 (오늘 표시할 메시지)
       if (date) {
         const dateStr = format(date, 'yyyy-MM-dd');
+        // display_date가 오늘이거나, display_forever가 true인 메시지
         query = query.or(
-          `display_date.eq.${dateStr},and(display_forever.eq.true,display_date.lte.${dateStr})`
+          `display_date.eq.${dateStr},display_forever.eq.true`
         );
       }
 

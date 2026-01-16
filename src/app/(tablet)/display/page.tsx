@@ -10,7 +10,7 @@ export default function DisplayPage() {
   const today = useMemo(() => new Date(), []);
 
   const { messages, loading } = useMessages({
-    // date: today,  // 임시로 날짜 필터 제거
+    date: today,
     realtime: true,
   });
 
