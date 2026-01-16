@@ -45,17 +45,24 @@ export default function DisplayPage() {
     setTimeout(() => {
       const utterance = new SpeechSynthesisUtterance(text);
       utterance.lang = 'ko-KR';
-      utterance.rate = 0.9;
+      utterance.rate = 1;
+      utterance.pitch = 1;
       utterance.volume = 1;
 
-      // 한국어 음성 찾기
+      // Google 한국어 음성 우선 찾기
       const voices = synth.getVoices();
       console.log('사용 가능한 음성 수:', voices.length);
 
-      const koreanVoice = voices.find(v => v.lang.includes('ko'));
-      if (koreanVoice) {
-        utterance.voice = koreanVoice;
-        console.log('선택된 음성:', koreanVoice.name);
+      // Google 음성 우선, 없으면 다른 한국어 음성
+      const googleKorean = voices.find(v => v.name.includes('Google') && v.lang.includes('ko'));
+      const anyKorean = voices.find(v => v.lang.includes('ko'));
+
+      if (googleKorean) {
+        utterance.voice = googleKorean;
+        console.log('선택된 음성 (Google):', googleKorean.name);
+      } else if (anyKorean) {
+        utterance.voice = anyKorean;
+        console.log('선택된 음성:', anyKorean.name);
       } else {
         console.log('한국어 음성 없음, 기본 음성 사용');
       }
