@@ -106,6 +106,9 @@ class TTSService {
         return;
       }
 
+      console.log('TTS speak 시작, 음성 수:', this.voices.length);
+      console.log('한국어 음성:', this.getKoreanVoices().map(v => v.name));
+
       // 현재 재생 중이면 중지
       this.stop();
 
@@ -138,15 +141,18 @@ class TTSService {
 
       // 이벤트 핸들러
       this.utterance.onstart = () => {
+        console.log('TTS onstart - 재생 시작');
         this.emitEvent('stateChange', this.getState());
       };
 
       this.utterance.onend = () => {
+        console.log('TTS onend - 재생 종료');
         this.emitEvent('stateChange', this.getState());
         resolve();
       };
 
       this.utterance.onerror = (event) => {
+        console.error('TTS onerror:', event.error);
         this.emitEvent('stateChange', this.getState());
         if (event.error !== 'interrupted') {
           reject(new Error(`TTS 오류: ${event.error}`));
@@ -162,6 +168,13 @@ class TTSService {
       this.utterance.onresume = () => {
         this.emitEvent('stateChange', this.getState());
       };
+
+      console.log('TTS 설정:', {
+        text: text.substring(0, 30),
+        voice: this.utterance.voice?.name || 'default',
+        rate: this.utterance.rate,
+        lang: this.utterance.lang,
+      });
 
       // 재생 시작
       this.synthesis.speak(this.utterance);
