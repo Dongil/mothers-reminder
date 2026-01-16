@@ -32,16 +32,32 @@ export default function DisplayPage() {
     }
   }, [messages, scheduleNotifications]);
 
-  // 메시지 읽기
+  // 메시지 읽기 - Web Speech API 직접 호출
   const handleSpeak = (text: string) => {
-    console.log('TTS 요청:', text, 'speaking:', speaking);
-    if (!speaking) {
-      speak(text).then(() => {
-        console.log('TTS 완료');
-      }).catch((err) => {
-        console.error('TTS 에러:', err);
-      });
+    console.log('TTS 요청:', text);
+
+    // 기존 재생 중지
+    window.speechSynthesis.cancel();
+
+    // 새 utterance 생성
+    const utterance = new SpeechSynthesisUtterance(text);
+    utterance.lang = 'ko-KR';
+    utterance.rate = 0.9;
+
+    // 한국어 음성 찾기
+    const voices = window.speechSynthesis.getVoices();
+    const koreanVoice = voices.find(v => v.lang.includes('ko'));
+    if (koreanVoice) {
+      utterance.voice = koreanVoice;
+      console.log('선택된 음성:', koreanVoice.name);
     }
+
+    utterance.onstart = () => console.log('재생 시작');
+    utterance.onend = () => console.log('재생 종료');
+    utterance.onerror = (e) => console.error('에러:', e.error);
+
+    // 재생
+    window.speechSynthesis.speak(utterance);
   };
 
   return (
