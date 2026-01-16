@@ -34,8 +34,13 @@ export default function DisplayPage() {
 
   // 메시지 읽기
   const handleSpeak = (text: string) => {
+    console.log('TTS 요청:', text, 'speaking:', speaking);
     if (!speaking) {
-      speak(text);
+      speak(text).then(() => {
+        console.log('TTS 완료');
+      }).catch((err) => {
+        console.error('TTS 에러:', err);
+      });
     }
   };
 
