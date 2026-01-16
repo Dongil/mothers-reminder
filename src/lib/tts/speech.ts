@@ -123,13 +123,14 @@ class TTSService {
       this.utterance.volume = mergedOptions.volume || 1;
       this.utterance.lang = mergedOptions.lang || 'ko-KR';
 
-      // 한국어 음성 선택
-      const koreanVoices = this.voices.filter(v => v.lang.includes('ko') || v.lang.includes('KR'));
-      if (koreanVoices.length > 0) {
-        this.utterance.voice = koreanVoices[0];
+      // 한국어 음성 선택 (Google 한국의 우선)
+      const googleKorean = this.voices.find(v => v.name === 'Google 한국의');
+      const anyKorean = this.voices.find(v => v.lang === 'ko-KR');
+      if (googleKorean) {
+        this.utterance.voice = googleKorean;
+      } else if (anyKorean) {
+        this.utterance.voice = anyKorean;
       }
-
-      console.log('TTS 재생:', text, '음성:', this.utterance.voice?.name);
 
       // 이벤트 핸들러
       this.utterance.onend = () => {
@@ -138,7 +139,6 @@ class TTSService {
       };
 
       this.utterance.onerror = (event) => {
-        console.error('TTS 에러:', event.error);
         this.emitEvent('stateChange', this.getState());
         if (event.error !== 'interrupted' && event.error !== 'canceled') {
           reject(new Error(`TTS 오류: ${event.error}`));

@@ -34,11 +34,7 @@ export default function DisplayPage() {
 
   // 메시지 읽기 - Web Speech API 직접 호출
   const handleSpeak = (text: string) => {
-    console.log('TTS 요청:', text);
-
     const synth = window.speechSynthesis;
-
-    // 기존 재생 중지
     synth.cancel();
 
     // Chrome 버그 대응: cancel 후 딜레이
@@ -49,32 +45,18 @@ export default function DisplayPage() {
       utterance.pitch = 1;
       utterance.volume = 1;
 
-      // "Google 한국의" 음성 찾기
+      // "Google 한국의" 음성 우선, 없으면 다른 한국어 음성
       const voices = synth.getVoices();
-      console.log('사용 가능한 음성:', voices.map(v => v.name));
-
-      // 정확히 "Google 한국의" 찾기
       const googleKorean = voices.find(v => v.name === 'Google 한국의');
+      const anyKorean = voices.find(v => v.lang === 'ko-KR');
 
       if (googleKorean) {
         utterance.voice = googleKorean;
-        console.log('선택된 음성: Google 한국의');
-      } else {
-        // 대안: 아무 한국어 음성
-        const anyKorean = voices.find(v => v.lang === 'ko-KR');
-        if (anyKorean) {
-          utterance.voice = anyKorean;
-          console.log('선택된 음성 (대안):', anyKorean.name);
-        }
+      } else if (anyKorean) {
+        utterance.voice = anyKorean;
       }
 
-      utterance.onstart = () => console.log('재생 시작');
-      utterance.onend = () => console.log('재생 종료');
-      utterance.onerror = (e) => console.error('에러:', e.error);
-
-      // 재생
       synth.speak(utterance);
-      console.log('speak() 호출됨, pending:', synth.pending, 'speaking:', synth.speaking);
     }, 100);
   };
 
