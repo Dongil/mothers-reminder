@@ -36,28 +36,38 @@ export default function DisplayPage() {
   const handleSpeak = (text: string) => {
     console.log('TTS 요청:', text);
 
+    const synth = window.speechSynthesis;
+
     // 기존 재생 중지
-    window.speechSynthesis.cancel();
+    synth.cancel();
 
-    // 새 utterance 생성
-    const utterance = new SpeechSynthesisUtterance(text);
-    utterance.lang = 'ko-KR';
-    utterance.rate = 0.9;
+    // Chrome 버그 대응: cancel 후 딜레이
+    setTimeout(() => {
+      const utterance = new SpeechSynthesisUtterance(text);
+      utterance.lang = 'ko-KR';
+      utterance.rate = 0.9;
+      utterance.volume = 1;
 
-    // 한국어 음성 찾기
-    const voices = window.speechSynthesis.getVoices();
-    const koreanVoice = voices.find(v => v.lang.includes('ko'));
-    if (koreanVoice) {
-      utterance.voice = koreanVoice;
-      console.log('선택된 음성:', koreanVoice.name);
-    }
+      // 한국어 음성 찾기
+      const voices = synth.getVoices();
+      console.log('사용 가능한 음성 수:', voices.length);
 
-    utterance.onstart = () => console.log('재생 시작');
-    utterance.onend = () => console.log('재생 종료');
-    utterance.onerror = (e) => console.error('에러:', e.error);
+      const koreanVoice = voices.find(v => v.lang.includes('ko'));
+      if (koreanVoice) {
+        utterance.voice = koreanVoice;
+        console.log('선택된 음성:', koreanVoice.name);
+      } else {
+        console.log('한국어 음성 없음, 기본 음성 사용');
+      }
 
-    // 재생
-    window.speechSynthesis.speak(utterance);
+      utterance.onstart = () => console.log('재생 시작');
+      utterance.onend = () => console.log('재생 종료');
+      utterance.onerror = (e) => console.error('에러:', e.error);
+
+      // 재생
+      synth.speak(utterance);
+      console.log('speak() 호출됨, pending:', synth.pending, 'speaking:', synth.speaking);
+    }, 100);
   };
 
   return (
