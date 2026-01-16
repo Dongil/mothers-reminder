@@ -106,11 +106,11 @@ class TTSService {
         return;
       }
 
-      console.log('TTS speak 시작, 음성 수:', this.voices.length);
-      console.log('한국어 음성:', this.getKoreanVoices().map(v => v.name));
-
       // 현재 재생 중이면 중지
-      this.stop();
+      this.synthesis.cancel();
+
+      // 음성 목록 새로고침 (Chrome 버그 대응)
+      this.voices = this.synthesis.getVoices();
 
       // 새 utterance 생성
       this.utterance = new SpeechSynthesisUtterance(text);
@@ -123,58 +123,29 @@ class TTSService {
       this.utterance.volume = mergedOptions.volume || 1;
       this.utterance.lang = mergedOptions.lang || 'ko-KR';
 
-      // 음성 선택
-      if (mergedOptions.voice) {
-        const selectedVoice = this.voices.find(
-          (v) => v.name === mergedOptions.voice || v.voiceURI === mergedOptions.voice
-        );
-        if (selectedVoice) {
-          this.utterance.voice = selectedVoice;
-        }
-      } else {
-        // 기본 한국어 음성 선택
-        const koreanVoice = this.getKoreanVoices()[0];
-        if (koreanVoice) {
-          this.utterance.voice = koreanVoice;
-        }
+      // 한국어 음성 선택
+      const koreanVoices = this.voices.filter(v => v.lang.includes('ko') || v.lang.includes('KR'));
+      if (koreanVoices.length > 0) {
+        this.utterance.voice = koreanVoices[0];
       }
 
-      // 이벤트 핸들러
-      this.utterance.onstart = () => {
-        console.log('TTS onstart - 재생 시작');
-        this.emitEvent('stateChange', this.getState());
-      };
+      console.log('TTS 재생:', text, '음성:', this.utterance.voice?.name);
 
+      // 이벤트 핸들러
       this.utterance.onend = () => {
-        console.log('TTS onend - 재생 종료');
         this.emitEvent('stateChange', this.getState());
         resolve();
       };
 
       this.utterance.onerror = (event) => {
-        console.error('TTS onerror:', event.error);
+        console.error('TTS 에러:', event.error);
         this.emitEvent('stateChange', this.getState());
-        if (event.error !== 'interrupted') {
+        if (event.error !== 'interrupted' && event.error !== 'canceled') {
           reject(new Error(`TTS 오류: ${event.error}`));
         } else {
           resolve();
         }
       };
-
-      this.utterance.onpause = () => {
-        this.emitEvent('stateChange', this.getState());
-      };
-
-      this.utterance.onresume = () => {
-        this.emitEvent('stateChange', this.getState());
-      };
-
-      console.log('TTS 설정:', {
-        text: text.substring(0, 30),
-        voice: this.utterance.voice?.name || 'default',
-        rate: this.utterance.rate,
-        lang: this.utterance.lang,
-      });
 
       // 재생 시작
       this.synthesis.speak(this.utterance);
@@ -188,7 +159,6 @@ class TTSService {
     if (this.synthesis) {
       this.synthesis.cancel();
       this.utterance = null;
-      this.emitEvent('stateChange', this.getState());
     }
   }
 
