@@ -49,22 +49,23 @@ export default function DisplayPage() {
       utterance.pitch = 1;
       utterance.volume = 1;
 
-      // Google 한국어 음성 우선 찾기
+      // "Google 한국의" 음성 찾기
       const voices = synth.getVoices();
-      console.log('사용 가능한 음성 수:', voices.length);
+      console.log('사용 가능한 음성:', voices.map(v => v.name));
 
-      // Google 음성 우선, 없으면 다른 한국어 음성
-      const googleKorean = voices.find(v => v.name.includes('Google') && v.lang.includes('ko'));
-      const anyKorean = voices.find(v => v.lang.includes('ko'));
+      // 정확히 "Google 한국의" 찾기
+      const googleKorean = voices.find(v => v.name === 'Google 한국의');
 
       if (googleKorean) {
         utterance.voice = googleKorean;
-        console.log('선택된 음성 (Google):', googleKorean.name);
-      } else if (anyKorean) {
-        utterance.voice = anyKorean;
-        console.log('선택된 음성:', anyKorean.name);
+        console.log('선택된 음성: Google 한국의');
       } else {
-        console.log('한국어 음성 없음, 기본 음성 사용');
+        // 대안: 아무 한국어 음성
+        const anyKorean = voices.find(v => v.lang === 'ko-KR');
+        if (anyKorean) {
+          utterance.voice = anyKorean;
+          console.log('선택된 음성 (대안):', anyKorean.name);
+        }
       }
 
       utterance.onstart = () => console.log('재생 시작');
