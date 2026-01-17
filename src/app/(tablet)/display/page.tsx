@@ -2,13 +2,13 @@
 
 import React, { useEffect, useMemo, useState, useCallback } from 'react';
 import { Header, MessageCard, NightMode } from '@/components/tablet';
-import { useMessages, useTTS, useNightMode } from '@/hooks';
+import { useMessages, useNightMode } from '@/hooks';
 import { useNotifications } from '@/hooks/useNotifications';
 
 export default function DisplayPage() {
   // 오디오 활성화 상태 (브라우저 autoplay 정책 대응)
   const [audioEnabled, setAudioEnabled] = useState(false);
-  const [debugInfo, setDebugInfo] = useState<string>('');
+  const [isSpeaking, setIsSpeaking] = useState(false);
 
   // 오늘 날짜를 메모이제이션
   const today = useMemo(() => new Date(), []);
@@ -18,7 +18,6 @@ export default function DisplayPage() {
     realtime: true,
   });
 
-  const { speak, speaking } = useTTS({ rate: 0.8 });
   const { isNightMode, exitNightMode } = useNightMode('20:00', '06:00');
   const { scheduleNotifications, requestPermission } = useNotifications({
     soundEnabled: true,
@@ -43,18 +42,13 @@ export default function DisplayPage() {
     const audio = new Audio();
     audio.src = 'data:audio/wav;base64,UklGRiQAAABXQVZFZm10IBAAAAABAAEARKwAAIhYAQACABAAZGF0YQAAAAA=';
     audio.play().catch(() => {});
-
-    // speechSynthesis도 활성화
-    const utterance = new SpeechSynthesisUtterance('');
-    utterance.volume = 0;
-    window.speechSynthesis.speak(utterance);
-
     setAudioEnabled(true);
   }, []);
 
   // 메시지 읽기 - Google Cloud TTS API 사용
   const handleSpeak = useCallback(async (text: string) => {
-    setDebugInfo('Cloud TTS 요청 중...');
+    if (isSpeaking) return;
+    setIsSpeaking(true);
 
     try {
       const response = await fetch('/api/tts', {
@@ -64,23 +58,23 @@ export default function DisplayPage() {
       });
 
       if (!response.ok) {
-        const error = await response.json();
-        setDebugInfo(`✗ TTS 오류: ${error.error}`);
+        console.error('TTS error:', await response.json());
+        setIsSpeaking(false);
         return;
       }
 
       const data = await response.json();
-      setDebugInfo('▶ 오디오 재생 중...');
 
       // base64 오디오를 재생
       const audio = new Audio(`data:audio/mp3;base64,${data.audioContent}`);
-      audio.onended = () => setDebugInfo('✓ 재생 완료');
-      audio.onerror = () => setDebugInfo('✗ 오디오 재생 오류');
+      audio.onended = () => setIsSpeaking(false);
+      audio.onerror = () => setIsSpeaking(false);
       await audio.play();
     } catch (error) {
-      setDebugInfo(`✗ 요청 오류: ${error}`);
+      console.error('TTS error:', error);
+      setIsSpeaking(false);
     }
-  }, []);
+  }, [isSpeaking]);
 
   return (
     <>
@@ -135,14 +129,8 @@ export default function DisplayPage() {
         <footer className="fixed bottom-0 left-0 right-0 bg-white border-t px-8 py-4">
           <div className="flex items-center justify-between text-gray-500">
             <span>메시지 {messages.length}개</span>
-            <span>{speaking ? '🔊 읽는 중...' : audioEnabled ? '🔔 알림 활성화됨' : '터치하여 듣기'}</span>
+            <span>{isSpeaking ? '🔊 읽는 중...' : audioEnabled ? '🔔 알림 활성화됨' : '터치하여 듣기'}</span>
           </div>
-          {/* 디버그 정보 */}
-          {debugInfo && (
-            <pre className="mt-2 text-xs text-gray-400 whitespace-pre-wrap bg-gray-100 p-2 rounded">
-              {debugInfo}
-            </pre>
-          )}
         </footer>
       </div>
     </>
