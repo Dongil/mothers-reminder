@@ -109,46 +109,75 @@ class TTSService {
       // 현재 재생 중이면 중지
       this.synthesis.cancel();
 
-      // 음성 목록 새로고침 (Chrome 버그 대응)
-      this.voices = this.synthesis.getVoices();
+      const doSpeak = () => {
+        if (!this.synthesis) return;
 
-      // 새 utterance 생성
-      this.utterance = new SpeechSynthesisUtterance(text);
+        // 음성 목록 새로고침
+        this.voices = this.synthesis.getVoices();
 
-      const mergedOptions = { ...this.options, ...options };
+        // 새 utterance 생성
+        this.utterance = new SpeechSynthesisUtterance(text);
 
-      // 옵션 적용
-      this.utterance.rate = mergedOptions.rate || 0.8;
-      this.utterance.pitch = mergedOptions.pitch || 1;
-      this.utterance.volume = mergedOptions.volume || 1;
-      this.utterance.lang = mergedOptions.lang || 'ko-KR';
+        const mergedOptions = { ...this.options, ...options };
 
-      // 한국어 음성 선택 (Google 한국의 우선)
-      const googleKorean = this.voices.find(v => v.name === 'Google 한국의');
-      const anyKorean = this.voices.find(v => v.lang === 'ko-KR');
-      if (googleKorean) {
-        this.utterance.voice = googleKorean;
-      } else if (anyKorean) {
-        this.utterance.voice = anyKorean;
-      }
+        // 옵션 적용
+        this.utterance.rate = mergedOptions.rate || 0.8;
+        this.utterance.pitch = mergedOptions.pitch || 1;
+        this.utterance.volume = mergedOptions.volume || 1;
+        this.utterance.lang = mergedOptions.lang || 'ko-KR';
 
-      // 이벤트 핸들러
-      this.utterance.onend = () => {
-        this.emitEvent('stateChange', this.getState());
-        resolve();
-      };
+        // 한국어 음성 선택 (여러 패턴 시도)
+        const koreanVoice = this.voices.find(v => v.name === 'Google 한국의') ||
+                           this.voices.find(v => v.name.includes('Korean')) ||
+                           this.voices.find(v => v.lang === 'ko-KR') ||
+                           this.voices.find(v => v.lang.startsWith('ko'));
 
-      this.utterance.onerror = (event) => {
-        this.emitEvent('stateChange', this.getState());
-        if (event.error !== 'interrupted' && event.error !== 'canceled') {
-          reject(new Error(`TTS 오류: ${event.error}`));
-        } else {
-          resolve();
+        if (koreanVoice) {
+          this.utterance.voice = koreanVoice;
         }
+
+        // 이벤트 핸들러
+        this.utterance.onend = () => {
+          this.emitEvent('stateChange', this.getState());
+          resolve();
+        };
+
+        this.utterance.onerror = (event) => {
+          this.emitEvent('stateChange', this.getState());
+          if (event.error !== 'interrupted' && event.error !== 'canceled') {
+            reject(new Error(`TTS 오류: ${event.error}`));
+          } else {
+            resolve();
+          }
+        };
+
+        // 재생 시작
+        this.synthesis.speak(this.utterance);
       };
 
-      // 재생 시작
-      this.synthesis.speak(this.utterance);
+      // Chrome 버그 대응: cancel 후 딜레이
+      setTimeout(() => {
+        const voices = this.synthesis!.getVoices();
+
+        // 음성이 아직 로드 안 됐으면 이벤트 대기
+        if (voices.length === 0) {
+          const handleVoicesChanged = () => {
+            this.synthesis!.onvoiceschanged = null;
+            doSpeak();
+          };
+          this.synthesis!.onvoiceschanged = handleVoicesChanged;
+
+          // 타임아웃: 1초 후에도 음성 없으면 그냥 실행
+          setTimeout(() => {
+            if (this.synthesis!.onvoiceschanged) {
+              this.synthesis!.onvoiceschanged = null;
+              doSpeak();
+            }
+          }, 1000);
+        } else {
+          doSpeak();
+        }
+      }, 100);
     });
   }
 

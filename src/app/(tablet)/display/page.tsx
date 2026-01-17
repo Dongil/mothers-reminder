@@ -52,32 +52,56 @@ export default function DisplayPage() {
   }, []);
 
   // 메시지 읽기 - Web Speech API 직접 호출
-  const handleSpeak = (text: string) => {
+  const handleSpeak = useCallback((text: string) => {
     const synth = window.speechSynthesis;
     synth.cancel();
 
-    // Chrome 버그 대응: cancel 후 딜레이
-    setTimeout(() => {
+    const speakWithVoice = () => {
       const utterance = new SpeechSynthesisUtterance(text);
       utterance.lang = 'ko-KR';
       utterance.rate = 1;
       utterance.pitch = 1;
       utterance.volume = 1;
 
-      // "Google 한국의" 음성 우선, 없으면 다른 한국어 음성
       const voices = synth.getVoices();
-      const googleKorean = voices.find(v => v.name === 'Google 한국의');
-      const anyKorean = voices.find(v => v.lang === 'ko-KR');
 
-      if (googleKorean) {
-        utterance.voice = googleKorean;
-      } else if (anyKorean) {
-        utterance.voice = anyKorean;
+      // 한국어 음성 찾기 (여러 패턴 시도)
+      const koreanVoice = voices.find(v => v.name === 'Google 한국의') ||
+                          voices.find(v => v.name.includes('Korean')) ||
+                          voices.find(v => v.lang === 'ko-KR') ||
+                          voices.find(v => v.lang.startsWith('ko'));
+
+      if (koreanVoice) {
+        utterance.voice = koreanVoice;
       }
 
       synth.speak(utterance);
+    };
+
+    // Chrome 버그 대응: cancel 후 딜레이
+    setTimeout(() => {
+      const voices = synth.getVoices();
+
+      // 음성이 아직 로드 안 됐으면 이벤트 대기
+      if (voices.length === 0) {
+        const handleVoicesChanged = () => {
+          synth.onvoiceschanged = null;
+          speakWithVoice();
+        };
+        synth.onvoiceschanged = handleVoicesChanged;
+
+        // 타임아웃: 1초 후에도 음성 없으면 그냥 실행
+        setTimeout(() => {
+          if (synth.onvoiceschanged) {
+            synth.onvoiceschanged = null;
+            speakWithVoice();
+          }
+        }, 1000);
+      } else {
+        speakWithVoice();
+      }
     }, 100);
-  };
+  }, []);
 
   return (
     <>
