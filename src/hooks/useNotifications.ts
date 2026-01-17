@@ -132,7 +132,7 @@ export function useNotifications(options: NotificationOptions = {}): UseNotifica
       try {
         new Notification('가족 메시지', {
           body: message.content,
-          icon: '/icons/icon-192x192.png',
+          icon: '/icons/icon.svg',
           tag: message.id,
           requireInteraction: message.priority === 'urgent',
         });
