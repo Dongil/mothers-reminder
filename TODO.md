@@ -4,7 +4,7 @@
 
 **시작일**: 2026년 1월 13일
 **목표**: MVP 완성
-**현재 상태**: Phase 5 완료 (2026년 1월 14일)
+**현재 상태**: Phase 6 MVP 완료 (2026년 1월 17일)
 
 ---
 
@@ -119,61 +119,61 @@
 - [x] `public/manifest.json`
 
 ### 아이콘
-- [x] `public/icons/icon.svg` - SVG 템플릿
-- [ ] PNG 아이콘 생성 (icon-192x192.png, icon-512x512.png)
+- [x] `public/icons/icon.svg` - SVG 아이콘 (manifest에서 직접 사용)
+- [x] ~~PNG 아이콘~~ - SVG 사용으로 불필요
 
 ### Service Worker
 - [x] `next.config.ts` - next-pwa 설정
 - [x] 캐싱 전략 설정
 
 ### 알림음
-- [ ] `public/sounds/chime.mp3` - 차임벨
-- [ ] `public/sounds/alert.mp3` - 긴급 알림
+- [x] `public/sounds/chime.mp3` - 차임벨
+- [x] `public/sounds/alert.mp3` - 긴급 알림
 
 ---
 
-## Phase 6: 테스트 및 배포
+## Phase 6: 테스트 및 배포 ✅
 
 ### 기능 테스트
-- [ ] 메시지 CRUD 테스트
-- [ ] TTS 재생 테스트
-- [ ] 알림 시간 정확도 테스트
-- [ ] 야간 모드 테스트
-- [ ] Realtime 동기화 테스트
+- [x] 메시지 CRUD 테스트
+- [x] TTS 재생 테스트 (Google 한국의 음성)
+- [ ] 알림 시간 정확도 테스트 (예약 알림)
+- [x] 야간 모드 테스트
+- [x] Realtime 동기화 테스트
 
 ### 실제 기기 테스트
 - [ ] 갤럭시 탭 7 FE 테스트
-- [ ] 스마트폰 테스트 (Android/iOS)
+- [x] Chrome 브라우저 테스트
 
 ### 배포
-- [ ] Vercel 프로젝트 생성
-- [ ] 환경변수 설정
-- [ ] Supabase 스키마 적용
-- [ ] 배포 및 도메인 확인
-- [ ] PWA 설치 테스트
+- [x] Vercel 배포 완료
+- [x] 환경변수 설정
+- [x] Supabase 스키마 적용
+- [x] RLS 정책 설정 (단순화 버전)
+- [x] PWA 설치 테스트
 
 ---
 
-## 배포 체크리스트
+## 배포 체크리스트 ✅
 
-### 1. Supabase 설정
+### 1. Supabase 설정 ✅
 ```bash
-# supabase/schema.sql 내용을 Supabase SQL Editor에서 실행
+# supabase/schema.sql - 테이블 생성
+# supabase/rls-policies-v2.sql - RLS 정책 (단순화 버전)
 ```
 
-### 2. Vercel 배포
+### 2. Vercel 배포 ✅
 ```bash
-# Vercel CLI 또는 GitHub 연동으로 배포
-vercel
+# Vercel에 배포 완료
 ```
 
-### 3. 환경변수 설정 (Vercel)
-- `NEXT_PUBLIC_SUPABASE_URL`
-- `NEXT_PUBLIC_SUPABASE_ANON_KEY`
+### 3. 환경변수 설정 ✅
+- `NEXT_PUBLIC_SUPABASE_URL` - 설정됨
+- `NEXT_PUBLIC_SUPABASE_ANON_KEY` - 설정됨
 
-### 4. 리소스 추가
-- `public/icons/` - PNG 아이콘 추가
-- `public/sounds/` - MP3 알림음 추가
+### 4. 리소스 ✅
+- `public/icons/icon.svg` - SVG 아이콘 사용
+- `public/sounds/chime.mp3`, `alert.mp3` - 추가됨
 
 ---
 
@@ -213,5 +213,5 @@ vercel
 ---
 
 **작성일**: 2026년 1월 13일
-**최종 업데이트**: 2026년 1월 14일
-**버전**: 1.0
+**최종 업데이트**: 2026년 1월 17일
+**버전**: 1.0 (MVP 완료)
