@@ -82,14 +82,17 @@ export default function DisplayPage() {
         utterance.voice = koreanVoice;
         setDebugInfo(prev => prev + `\n선택: ${koreanVoice.name}`);
       } else {
-        setDebugInfo(prev => prev + '\n한국어 음성 없음!');
+        // 음성 없어도 lang 설정으로 시스템 TTS 사용 시도
+        setDebugInfo(prev => prev + '\n한국어 음성 없음 - 시스템 TTS 시도');
       }
 
       utterance.onstart = () => setDebugInfo(prev => prev + '\n재생 시작');
       utterance.onend = () => setDebugInfo(prev => prev + '\n재생 완료');
       utterance.onerror = (e) => setDebugInfo(prev => prev + `\n오류: ${e.error}`);
 
-      synth.speak(utterance);
+      // 재생 시도
+      const result = synth.speak(utterance);
+      setDebugInfo(prev => prev + `\nspeak() 호출됨, pending: ${synth.pending}, speaking: ${synth.speaking}`);
     };
 
     // Chrome 버그 대응: cancel 후 딜레이
