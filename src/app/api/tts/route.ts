@@ -63,7 +63,7 @@ export async function POST(request: NextRequest) {
       const error = await response.json();
       console.error('Google TTS API error:', error);
       return NextResponse.json(
-        { error: 'TTS 변환 실패' },
+        { error: `TTS 변환 실패: ${error.error?.message || JSON.stringify(error)}` },
         { status: 500 }
       );
     }
