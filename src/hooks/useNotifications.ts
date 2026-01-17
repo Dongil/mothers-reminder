@@ -2,7 +2,6 @@
 
 import { useState, useEffect, useCallback, useRef } from 'react';
 import type { Message } from '@/types/database';
-import { getTTSService } from '@/lib/tts/speech';
 
 interface NotificationOptions {
   soundEnabled?: boolean;
@@ -103,6 +102,28 @@ export function useNotifications(options: NotificationOptions = {}): UseNotifica
     }
   }, []);
 
+  // Cloud TTS로 음성 재생
+  const speakWithCloudTTS = useCallback(async (text: string) => {
+    try {
+      const response = await fetch('/api/tts', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ text }),
+      });
+
+      if (!response.ok) {
+        console.error('Cloud TTS error:', await response.json());
+        return;
+      }
+
+      const data = await response.json();
+      const audio = new Audio(`data:audio/mp3;base64,${data.audioContent}`);
+      await audio.play();
+    } catch (error) {
+      console.error('Cloud TTS error:', error);
+    }
+  }, []);
+
   // 알림 표시
   const showNotification = useCallback(async (message: Message) => {
     // 소리 재생
@@ -114,17 +135,9 @@ export function useNotifications(options: NotificationOptions = {}): UseNotifica
       }
     }
 
-    // TTS 재생
+    // TTS 재생 (Cloud TTS 사용)
     if (ttsEnabled && message.tts_enabled) {
-      const tts = getTTSService();
-      try {
-        await tts.speak(message.content, {
-          rate: message.tts_speed || 0.8,
-          voice: message.tts_voice,
-        });
-      } catch (error) {
-        console.error('TTS error:', error);
-      }
+      await speakWithCloudTTS(message.content);
     }
 
     // 브라우저 알림 표시
@@ -140,7 +153,7 @@ export function useNotifications(options: NotificationOptions = {}): UseNotifica
         console.error('Notification error:', error);
       }
     }
-  }, [permission, soundEnabled, ttsEnabled, playChime, playAlert]);
+  }, [permission, soundEnabled, ttsEnabled, playChime, playAlert, speakWithCloudTTS]);
 
   // 단일 알림 스케줄링
   const scheduleOne = useCallback((message: Message, time: string) => {

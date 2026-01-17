@@ -52,41 +52,34 @@ export default function DisplayPage() {
     setAudioEnabled(true);
   }, []);
 
-  // 메시지 읽기 - Web Speech API 직접 호출 (사용자 제스처 컨텍스트 유지)
-  const handleSpeak = useCallback((text: string) => {
-    const synth = window.speechSynthesis;
-    const voices = synth.getVoices();
+  // 메시지 읽기 - Google Cloud TTS API 사용
+  const handleSpeak = useCallback(async (text: string) => {
+    setDebugInfo('Cloud TTS 요청 중...');
 
-    // 디버그 정보
-    const koreanVoices = voices.filter(v => v.lang.startsWith('ko') || v.name.includes('Korean') || v.name.includes('한국'));
-    setDebugInfo(`총 ${voices.length}개, 한국어: ${koreanVoices.length}개`);
+    try {
+      const response = await fetch('/api/tts', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ text }),
+      });
 
-    // utterance 생성
-    const utterance = new SpeechSynthesisUtterance(text);
-    utterance.lang = 'ko-KR';
-    utterance.rate = 1;
-    utterance.pitch = 1;
-    utterance.volume = 1;
+      if (!response.ok) {
+        const error = await response.json();
+        setDebugInfo(`✗ TTS 오류: ${error.error}`);
+        return;
+      }
 
-    // 한국어 음성 찾기
-    const koreanVoice = voices.find(v => v.name === 'Google 한국의') ||
-                        voices.find(v => v.name.includes('Korean')) ||
-                        voices.find(v => v.name.includes('한국')) ||
-                        voices.find(v => v.lang === 'ko-KR') ||
-                        voices.find(v => v.lang.startsWith('ko'));
+      const data = await response.json();
+      setDebugInfo('▶ 오디오 재생 중...');
 
-    if (koreanVoice) {
-      utterance.voice = koreanVoice;
-      setDebugInfo(prev => prev + `\n선택: ${koreanVoice.name}`);
+      // base64 오디오를 재생
+      const audio = new Audio(`data:audio/mp3;base64,${data.audioContent}`);
+      audio.onended = () => setDebugInfo('✓ 재생 완료');
+      audio.onerror = () => setDebugInfo('✗ 오디오 재생 오류');
+      await audio.play();
+    } catch (error) {
+      setDebugInfo(`✗ 요청 오류: ${error}`);
     }
-
-    utterance.onstart = () => setDebugInfo(prev => prev + '\n▶ 재생 시작');
-    utterance.onend = () => setDebugInfo(prev => prev + '\n✓ 재생 완료');
-    utterance.onerror = (e) => setDebugInfo(prev => prev + `\n✗ 오류: ${e.error}`);
-
-    // 동기적으로 바로 speak() 호출 (사용자 클릭 컨텍스트 유지)
-    synth.speak(utterance);
-    setDebugInfo(prev => prev + `\nspeak() 호출, speaking: ${synth.speaking}`);
   }, []);
 
   return (
