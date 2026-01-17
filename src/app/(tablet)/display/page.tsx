@@ -52,79 +52,41 @@ export default function DisplayPage() {
     setAudioEnabled(true);
   }, []);
 
-  // 메시지 읽기 - Web Speech API 직접 호출
+  // 메시지 읽기 - Web Speech API 직접 호출 (사용자 제스처 컨텍스트 유지)
   const handleSpeak = useCallback((text: string) => {
     const synth = window.speechSynthesis;
-
-    const speakWithVoice = () => {
-      const voices = synth.getVoices();
-
-      // 디버그: 사용 가능한 음성 정보
-      const voiceInfo = voices.map(v => `${v.name}(${v.lang})`).join(', ');
-      const koreanVoices = voices.filter(v => v.lang.startsWith('ko') || v.name.includes('Korean'));
-
-      setDebugInfo(`총 ${voices.length}개 음성, 한국어: ${koreanVoices.length}개\n${voiceInfo.slice(0, 200)}`);
-
-      const utterance = new SpeechSynthesisUtterance(text);
-      utterance.lang = 'ko-KR';
-      utterance.rate = 1;
-      utterance.pitch = 1;
-      utterance.volume = 1;
-
-      // 한국어 음성 찾기 (여러 패턴 시도)
-      const koreanVoice = voices.find(v => v.name === 'Google 한국의') ||
-                          voices.find(v => v.name.includes('Korean')) ||
-                          voices.find(v => v.name.includes('한국')) ||
-                          voices.find(v => v.lang === 'ko-KR') ||
-                          voices.find(v => v.lang.startsWith('ko'));
-
-      if (koreanVoice) {
-        utterance.voice = koreanVoice;
-        setDebugInfo(prev => prev + `\n선택: ${koreanVoice.name}`);
-      } else {
-        setDebugInfo(prev => prev + '\n한국어 음성 없음 - 시스템 TTS 시도');
-      }
-
-      utterance.onstart = () => setDebugInfo(prev => prev + '\n재생 시작');
-      utterance.onend = () => setDebugInfo(prev => prev + '\n재생 완료');
-      utterance.onerror = (e) => setDebugInfo(prev => prev + `\n오류: ${e.error}`);
-
-      // 현재 재생 중이면 중지 후 딜레이
-      if (synth.speaking) {
-        synth.cancel();
-        setTimeout(() => {
-          synth.speak(utterance);
-          setDebugInfo(prev => prev + `\nspeak() 호출됨 (cancel 후)`);
-        }, 250);
-      } else {
-        synth.speak(utterance);
-        setDebugInfo(prev => prev + `\nspeak() 호출됨, pending: ${synth.pending}, speaking: ${synth.speaking}`);
-      }
-    };
-
-    // 음성 로드 확인
     const voices = synth.getVoices();
-    setDebugInfo(`음성 로드 체크: ${voices.length}개`);
 
-    if (voices.length === 0) {
-      setDebugInfo('음성 로드 대기중...');
-      const handleVoicesChanged = () => {
-        synth.onvoiceschanged = null;
-        speakWithVoice();
-      };
-      synth.onvoiceschanged = handleVoicesChanged;
+    // 디버그 정보
+    const koreanVoices = voices.filter(v => v.lang.startsWith('ko') || v.name.includes('Korean') || v.name.includes('한국'));
+    setDebugInfo(`총 ${voices.length}개, 한국어: ${koreanVoices.length}개`);
 
-      // 타임아웃: 1초 후에도 음성 없으면 그냥 실행
-      setTimeout(() => {
-        if (synth.onvoiceschanged) {
-          synth.onvoiceschanged = null;
-          setDebugInfo(prev => prev + '\n타임아웃 - 기본 실행');
-          speakWithVoice();
-        }
-      }, 1000);
-    } else {
-      speakWithVoice();
+    // utterance 생성
+    const utterance = new SpeechSynthesisUtterance(text);
+    utterance.lang = 'ko-KR';
+    utterance.rate = 1;
+    utterance.pitch = 1;
+    utterance.volume = 1;
+
+    // 한국어 음성 찾기
+    const koreanVoice = voices.find(v => v.name === 'Google 한국의') ||
+                        voices.find(v => v.name.includes('Korean')) ||
+                        voices.find(v => v.name.includes('한국')) ||
+                        voices.find(v => v.lang === 'ko-KR') ||
+                        voices.find(v => v.lang.startsWith('ko'));
+
+    if (koreanVoice) {
+      utterance.voice = koreanVoice;
+      setDebugInfo(prev => prev + `\n선택: ${koreanVoice.name}`);
     }
+
+    utterance.onstart = () => setDebugInfo(prev => prev + '\n▶ 재생 시작');
+    utterance.onend = () => setDebugInfo(prev => prev + '\n✓ 재생 완료');
+    utterance.onerror = (e) => setDebugInfo(prev => prev + `\n✗ 오류: ${e.error}`);
+
+    // 동기적으로 바로 speak() 호출 (사용자 클릭 컨텍스트 유지)
+    synth.speak(utterance);
+    setDebugInfo(prev => prev + `\nspeak() 호출, speaking: ${synth.speaking}`);
   }, []);
 
   return (
