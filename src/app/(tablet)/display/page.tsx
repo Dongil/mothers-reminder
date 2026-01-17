@@ -55,7 +55,6 @@ export default function DisplayPage() {
   // 메시지 읽기 - Web Speech API 직접 호출
   const handleSpeak = useCallback((text: string) => {
     const synth = window.speechSynthesis;
-    synth.cancel();
 
     const speakWithVoice = () => {
       const voices = synth.getVoices();
@@ -75,6 +74,7 @@ export default function DisplayPage() {
       // 한국어 음성 찾기 (여러 패턴 시도)
       const koreanVoice = voices.find(v => v.name === 'Google 한국의') ||
                           voices.find(v => v.name.includes('Korean')) ||
+                          voices.find(v => v.name.includes('한국')) ||
                           voices.find(v => v.lang === 'ko-KR') ||
                           voices.find(v => v.lang.startsWith('ko'));
 
@@ -82,7 +82,6 @@ export default function DisplayPage() {
         utterance.voice = koreanVoice;
         setDebugInfo(prev => prev + `\n선택: ${koreanVoice.name}`);
       } else {
-        // 음성 없어도 lang 설정으로 시스템 TTS 사용 시도
         setDebugInfo(prev => prev + '\n한국어 음성 없음 - 시스템 TTS 시도');
       }
 
@@ -90,37 +89,42 @@ export default function DisplayPage() {
       utterance.onend = () => setDebugInfo(prev => prev + '\n재생 완료');
       utterance.onerror = (e) => setDebugInfo(prev => prev + `\n오류: ${e.error}`);
 
-      // 재생 시도
-      const result = synth.speak(utterance);
-      setDebugInfo(prev => prev + `\nspeak() 호출됨, pending: ${synth.pending}, speaking: ${synth.speaking}`);
+      // 현재 재생 중이면 중지 후 딜레이
+      if (synth.speaking) {
+        synth.cancel();
+        setTimeout(() => {
+          synth.speak(utterance);
+          setDebugInfo(prev => prev + `\nspeak() 호출됨 (cancel 후)`);
+        }, 250);
+      } else {
+        synth.speak(utterance);
+        setDebugInfo(prev => prev + `\nspeak() 호출됨, pending: ${synth.pending}, speaking: ${synth.speaking}`);
+      }
     };
 
-    // Chrome 버그 대응: cancel 후 딜레이
-    setTimeout(() => {
-      const voices = synth.getVoices();
-      setDebugInfo(`음성 로드 체크: ${voices.length}개`);
+    // 음성 로드 확인
+    const voices = synth.getVoices();
+    setDebugInfo(`음성 로드 체크: ${voices.length}개`);
 
-      // 음성이 아직 로드 안 됐으면 이벤트 대기
-      if (voices.length === 0) {
-        setDebugInfo('음성 로드 대기중...');
-        const handleVoicesChanged = () => {
-          synth.onvoiceschanged = null;
-          speakWithVoice();
-        };
-        synth.onvoiceschanged = handleVoicesChanged;
-
-        // 타임아웃: 1초 후에도 음성 없으면 그냥 실행
-        setTimeout(() => {
-          if (synth.onvoiceschanged) {
-            synth.onvoiceschanged = null;
-            setDebugInfo(prev => prev + '\n타임아웃 - 기본 실행');
-            speakWithVoice();
-          }
-        }, 1000);
-      } else {
+    if (voices.length === 0) {
+      setDebugInfo('음성 로드 대기중...');
+      const handleVoicesChanged = () => {
+        synth.onvoiceschanged = null;
         speakWithVoice();
-      }
-    }, 100);
+      };
+      synth.onvoiceschanged = handleVoicesChanged;
+
+      // 타임아웃: 1초 후에도 음성 없으면 그냥 실행
+      setTimeout(() => {
+        if (synth.onvoiceschanged) {
+          synth.onvoiceschanged = null;
+          setDebugInfo(prev => prev + '\n타임아웃 - 기본 실행');
+          speakWithVoice();
+        }
+      }, 1000);
+    } else {
+      speakWithVoice();
+    }
   }, []);
 
   return (
