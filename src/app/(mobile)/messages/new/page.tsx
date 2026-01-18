@@ -34,8 +34,11 @@ export default function NewMessagePage() {
       if (result) {
         router.push('/home');
       } else {
-        alert('메시지 작성에 실패했습니다');
+        alert('메시지 작성에 실패했습니다 (result null)');
       }
+    } catch (err) {
+      const errorMsg = err instanceof Error ? err.message : String(err);
+      alert(`메시지 작성 오류: ${errorMsg}`);
     } finally {
       setIsLoading(false);
     }

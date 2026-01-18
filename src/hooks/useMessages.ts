@@ -89,7 +89,8 @@ export function useMessages(options: UseMessagesOptions = {}): UseMessagesReturn
     messageData: Omit<MessageInsert, 'author_id' | 'family_id'>
   ): Promise<Message | null> => {
     if (!isReady || !supabase) {
-      return null;
+      console.error('createMessage failed: isReady=', isReady, 'supabase=', !!supabase);
+      throw new Error(`초기화 실패: isReady=${isReady}, supabase=${!!supabase}`);
     }
     try {
       // 현재 사용자 정보 가져오기
