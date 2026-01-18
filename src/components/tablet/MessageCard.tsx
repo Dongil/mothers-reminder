@@ -77,7 +77,7 @@ export function MessageCard({ message, onSpeak, className }: MessageCardProps) {
 
         {/* 메시지 내용 - 큰 글씨 */}
         <div className="mb-6">
-          <p className="text-6xl leading-relaxed font-medium text-gray-900 break-words">
+          <p className="text-[100px] leading-tight font-medium text-gray-900 break-words">
             {message.content}
           </p>
         </div>
