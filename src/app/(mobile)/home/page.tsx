@@ -6,10 +6,12 @@ import { Plus, MessageSquare, Settings, LogOut } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { MessageList } from '@/components/mobile';
 import { useMessages } from '@/hooks';
+import { createClient } from '@/lib/supabase/client';
 import type { Message } from '@/types/database';
 
 export default function MobileHomePage() {
   const router = useRouter();
+  const supabase = createClient();
 
   // 오늘 날짜를 메모이제이션하여 불필요한 리렌더링 방지
   const today = useMemo(() => new Date(), []);
@@ -20,6 +22,12 @@ export default function MobileHomePage() {
 
   const handleNewMessage = () => {
     router.push('/messages/new');
+  };
+
+  const handleLogout = async () => {
+    if (!supabase) return;
+    await supabase.auth.signOut();
+    router.push('/login');
   };
 
   const handleEdit = (message: Message) => {
@@ -46,7 +54,7 @@ export default function MobileHomePage() {
             <Button variant="ghost" size="icon">
               <Settings className="w-5 h-5" />
             </Button>
-            <Button variant="ghost" size="icon">
+            <Button variant="ghost" size="icon" onClick={handleLogout}>
               <LogOut className="w-5 h-5" />
             </Button>
           </div>
