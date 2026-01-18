@@ -1,30 +1,49 @@
 'use client';
 
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
+import { createClient } from '@/lib/supabase/client';
 
 const LAST_PAGE_KEY = 'mothers-reminder-last-page';
 
 export default function Home() {
   const router = useRouter();
+  const [isChecking, setIsChecking] = useState(true);
 
   useEffect(() => {
-    // 1. localStorage에서 마지막 방문 페이지 확인
-    const lastPage = localStorage.getItem(LAST_PAGE_KEY);
+    const checkAuthAndRedirect = async () => {
+      const supabase = createClient();
 
-    if (lastPage && (lastPage === '/home' || lastPage === '/display')) {
-      router.replace(lastPage);
-      return;
-    }
+      // 1. 인증 상태 확인
+      if (supabase) {
+        const { data: { session } } = await supabase.auth.getSession();
 
-    // 2. 화면 크기로 기기 타입 감지 (768px 이상이면 태블릿)
-    const isTablet = window.innerWidth >= 768;
+        // 로그인 안 되어 있으면 /login으로
+        if (!session) {
+          router.replace('/login');
+          return;
+        }
+      }
 
-    if (isTablet) {
-      router.replace('/display');
-    } else {
-      router.replace('/home');
-    }
+      // 2. localStorage에서 마지막 방문 페이지 확인
+      const lastPage = localStorage.getItem(LAST_PAGE_KEY);
+
+      if (lastPage && (lastPage === '/home' || lastPage === '/display')) {
+        router.replace(lastPage);
+        return;
+      }
+
+      // 3. 화면 크기로 기기 타입 감지 (768px 이상이면 태블릿)
+      const isTablet = window.innerWidth >= 768;
+
+      if (isTablet) {
+        router.replace('/display');
+      } else {
+        router.replace('/home');
+      }
+    };
+
+    checkAuthAndRedirect();
   }, [router]);
 
   // 로딩 중 표시
