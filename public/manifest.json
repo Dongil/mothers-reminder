@@ -2,7 +2,7 @@
   "name": "가족 메시지 보드",
   "short_name": "가족메시지",
   "description": "경도 인지 장애 어르신을 위한 디지털 메시지 보드",
-  "start_url": "/display",
+  "start_url": "/",
   "display": "standalone",
   "orientation": "portrait",
   "background_color": "#ffffff",

@@ -1,17 +1,24 @@
 'use client';
 
-import React, { useMemo } from 'react';
+import React, { useMemo, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { Plus, MessageSquare, Settings, LogOut } from 'lucide-react';
+import { Plus, MessageSquare, Monitor, LogOut } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { MessageList } from '@/components/mobile';
 import { useMessages } from '@/hooks';
 import { createClient } from '@/lib/supabase/client';
 import type { Message } from '@/types/database';
 
+const LAST_PAGE_KEY = 'mothers-reminder-last-page';
+
 export default function MobileHomePage() {
   const router = useRouter();
   const supabase = createClient();
+
+  // 마지막 방문 페이지 저장
+  useEffect(() => {
+    localStorage.setItem(LAST_PAGE_KEY, '/home');
+  }, []);
 
   // 오늘 날짜를 메모이제이션하여 불필요한 리렌더링 방지
   const today = useMemo(() => new Date(), []);
@@ -51,8 +58,14 @@ export default function MobileHomePage() {
             <h1 className="text-xl font-bold text-white">가족 메시지</h1>
           </div>
           <div className="flex items-center gap-1">
-            <Button variant="ghost" size="icon" className="text-white hover:bg-blue-500">
-              <Settings className="w-5 h-5" />
+            <Button
+              variant="ghost"
+              size="icon"
+              className="text-white hover:bg-blue-500"
+              onClick={() => router.push('/display')}
+              title="태블릿 화면으로 전환"
+            >
+              <Monitor className="w-5 h-5" />
             </Button>
             <Button variant="ghost" size="icon" className="text-white hover:bg-blue-500" onClick={handleLogout}>
               <LogOut className="w-5 h-5" />

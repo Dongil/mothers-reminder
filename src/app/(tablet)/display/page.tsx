@@ -5,10 +5,17 @@ import { Header, MessageCard, NightMode } from '@/components/tablet';
 import { useMessages, useNightMode } from '@/hooks';
 import { useNotifications } from '@/hooks/useNotifications';
 
+const LAST_PAGE_KEY = 'mothers-reminder-last-page';
+
 export default function DisplayPage() {
   // 오디오 활성화 상태 (브라우저 autoplay 정책 대응)
   const [audioEnabled, setAudioEnabled] = useState(false);
   const [isSpeaking, setIsSpeaking] = useState(false);
+
+  // 마지막 방문 페이지 저장
+  useEffect(() => {
+    localStorage.setItem(LAST_PAGE_KEY, '/display');
+  }, []);
 
   // 오늘 날짜를 메모이제이션
   const today = useMemo(() => new Date(), []);
