@@ -167,7 +167,7 @@ export default function LoginPage() {
             className={`flex-1 py-2 rounded-md text-sm font-medium transition-colors ${
               mode === 'login'
                 ? 'bg-white shadow text-gray-900'
-                : 'text-gray-500'
+                : 'text-gray-700'
             }`}
             onClick={() => setMode('login')}
           >
@@ -177,7 +177,7 @@ export default function LoginPage() {
             className={`flex-1 py-2 rounded-md text-sm font-medium transition-colors ${
               mode === 'register'
                 ? 'bg-white shadow text-gray-900'
-                : 'text-gray-500'
+                : 'text-gray-700'
             }`}
             onClick={() => setMode('register')}
           >
