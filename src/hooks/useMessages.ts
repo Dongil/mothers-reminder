@@ -206,34 +206,40 @@ export function useMessages(options: UseMessagesOptions = {}): UseMessagesReturn
 
   // Realtime 구독
   useEffect(() => {
-    if (!isReady || !supabase || !realtime || !familyId) return;
+    if (!isReady || !supabase || !realtime) return;
 
-    const channel = supabase
-      .channel(`messages:family:${familyId}`)
-      .on(
-        'postgres_changes',
-        {
-          event: '*',
+    // familyId가 있으면 해당 가족만, 없으면 전체 메시지 구독
+    const channelName = familyId ? `messages:family:${familyId}` : 'messages:all';
+    const subscriptionConfig = familyId
+      ? {
+          event: '*' as const,
           schema: 'public',
           table: 'messages',
           filter: `family_id=eq.${familyId}`,
-        },
-        (payload) => {
-          if (payload.eventType === 'INSERT') {
-            setMessages((prev) => [payload.new as Message, ...prev]);
-          } else if (payload.eventType === 'UPDATE') {
-            setMessages((prev) =>
-              prev.map((msg) =>
-                msg.id === payload.new.id ? (payload.new as Message) : msg
-              )
-            );
-          } else if (payload.eventType === 'DELETE') {
-            setMessages((prev) =>
-              prev.filter((msg) => msg.id !== payload.old.id)
-            );
-          }
         }
-      )
+      : {
+          event: '*' as const,
+          schema: 'public',
+          table: 'messages',
+        };
+
+    const channel = supabase
+      .channel(channelName)
+      .on('postgres_changes', subscriptionConfig, (payload) => {
+        if (payload.eventType === 'INSERT') {
+          setMessages((prev) => [payload.new as Message, ...prev]);
+        } else if (payload.eventType === 'UPDATE') {
+          setMessages((prev) =>
+            prev.map((msg) =>
+              msg.id === payload.new.id ? (payload.new as Message) : msg
+            )
+          );
+        } else if (payload.eventType === 'DELETE') {
+          setMessages((prev) =>
+            prev.filter((msg) => msg.id !== payload.old.id)
+          );
+        }
+      })
       .subscribe();
 
     return () => {
