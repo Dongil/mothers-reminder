@@ -93,11 +93,12 @@ export function useMessages(options: UseMessagesOptions = {}): UseMessagesReturn
       throw new Error(`초기화 실패: isReady=${isReady}, supabase=${!!supabase}`);
     }
     try {
-      // 현재 사용자 정보 가져오기
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) {
-        throw new Error('로그인이 필요합니다');
+      // 현재 사용자 정보 가져오기 (getSession 사용 - 로컬 스토리지 기반)
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session?.user) {
+        throw new Error('로그인이 필요합니다 (세션 없음)');
       }
+      const user = session.user;
 
       // 사용자의 family_id 가져오기
       const { data: userData } = await supabase
