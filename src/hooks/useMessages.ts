@@ -89,14 +89,13 @@ export function useMessages(options: UseMessagesOptions = {}): UseMessagesReturn
     messageData: Omit<MessageInsert, 'author_id' | 'family_id'>
   ): Promise<Message | null> => {
     if (!isReady || !supabase) {
-      console.error('createMessage failed: isReady=', isReady, 'supabase=', !!supabase);
-      throw new Error(`초기화 실패: isReady=${isReady}, supabase=${!!supabase}`);
+      return null;
     }
     try {
-      // 현재 사용자 정보 가져오기 (getSession 사용 - 로컬 스토리지 기반)
+      // 현재 사용자 정보 가져오기
       const { data: { session } } = await supabase.auth.getSession();
       if (!session?.user) {
-        throw new Error('로그인이 필요합니다 (세션 없음)');
+        throw new Error('로그인이 필요합니다');
       }
       const user = session.user;
 
@@ -133,7 +132,7 @@ export function useMessages(options: UseMessagesOptions = {}): UseMessagesReturn
       const errorMessage = err instanceof Error ? err.message : '메시지 작성에 실패했습니다';
       setError(errorMessage);
       console.error('Failed to create message:', err);
-      throw err; // 상위로 에러 전파
+      return null;
     }
   }, [isReady]);
 

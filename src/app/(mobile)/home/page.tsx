@@ -44,17 +44,17 @@ export default function MobileHomePage() {
   return (
     <div className="min-h-screen bg-gray-50">
       {/* 헤더 */}
-      <header className="bg-white border-b px-4 py-4 sticky top-0 z-10">
+      <header className="bg-blue-600 px-4 py-4 sticky top-0 z-10">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
-            <MessageSquare className="w-6 h-6 text-blue-600" />
-            <h1 className="text-xl font-bold">가족 메시지</h1>
+            <MessageSquare className="w-6 h-6 text-white" />
+            <h1 className="text-xl font-bold text-white">가족 메시지</h1>
           </div>
-          <div className="flex items-center gap-2">
-            <Button variant="ghost" size="icon">
+          <div className="flex items-center gap-1">
+            <Button variant="ghost" size="icon" className="text-white hover:bg-blue-500">
               <Settings className="w-5 h-5" />
             </Button>
-            <Button variant="ghost" size="icon" onClick={handleLogout}>
+            <Button variant="ghost" size="icon" className="text-white hover:bg-blue-500" onClick={handleLogout}>
               <LogOut className="w-5 h-5" />
             </Button>
           </div>

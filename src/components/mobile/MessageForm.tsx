@@ -83,7 +83,7 @@ export function MessageForm({ onSubmit, initialData, isLoading }: MessageFormPro
     <form onSubmit={handleSubmit(onFormSubmit)} className="space-y-6">
       {/* 메시지 내용 */}
       <div className="space-y-2">
-        <Label htmlFor="content" className="text-base font-semibold">
+        <Label htmlFor="content" className="text-base font-semibold text-gray-900">
           메시지 내용 *
         </Label>
         <Textarea
@@ -102,12 +102,12 @@ export function MessageForm({ onSubmit, initialData, isLoading }: MessageFormPro
 
       {/* 중요도 */}
       <div className="space-y-2">
-        <Label className="text-base font-semibold">중요도</Label>
+        <Label className="text-base font-semibold text-gray-900">중요도</Label>
         <div className="flex gap-2">
           {[
-            { value: 'normal', label: '일반', color: 'bg-gray-100' },
-            { value: 'important', label: '⭐ 중요', color: 'bg-yellow-100' },
-            { value: 'urgent', label: '🚨 긴급', color: 'bg-red-100' },
+            { value: 'normal', label: '일반', color: 'bg-gray-100', textColor: 'text-gray-800' },
+            { value: 'important', label: '⭐ 중요', color: 'bg-yellow-100', textColor: 'text-yellow-800' },
+            { value: 'urgent', label: '🚨 긴급', color: 'bg-red-100', textColor: 'text-red-800' },
           ].map((option) => (
             <button
               key={option.value}
@@ -117,8 +117,9 @@ export function MessageForm({ onSubmit, initialData, isLoading }: MessageFormPro
                 'flex-1 py-3 px-4 rounded-lg border-2 font-medium transition-all',
                 priority === option.value
                   ? 'border-blue-500 ring-2 ring-blue-200'
-                  : 'border-gray-200',
-                option.color
+                  : 'border-gray-300',
+                option.color,
+                option.textColor
               )}
             >
               {option.label}
@@ -129,7 +130,7 @@ export function MessageForm({ onSubmit, initialData, isLoading }: MessageFormPro
 
       {/* 표시 날짜 */}
       <div className="space-y-2">
-        <Label htmlFor="display_date" className="text-base font-semibold">
+        <Label htmlFor="display_date" className="text-base font-semibold text-gray-900">
           표시 날짜 *
         </Label>
         <Input
@@ -144,10 +145,10 @@ export function MessageForm({ onSubmit, initialData, isLoading }: MessageFormPro
       </div>
 
       {/* TTS 설정 */}
-      <div className="space-y-4 p-4 bg-gray-50 rounded-lg">
+      <div className="space-y-4 p-4 bg-gray-100 rounded-lg border border-gray-200">
         <div className="flex items-center justify-between">
-          <Label className="text-base font-semibold flex items-center gap-2">
-            <Volume2 className="w-5 h-5" />
+          <Label className="text-base font-semibold text-gray-900 flex items-center gap-2">
+            <Volume2 className="w-5 h-5 text-gray-700" />
             음성 읽기
           </Label>
           <label className="relative inline-flex items-center cursor-pointer">
@@ -162,7 +163,7 @@ export function MessageForm({ onSubmit, initialData, isLoading }: MessageFormPro
 
         {ttsEnabled && (
           <div className="space-y-3">
-            <Label className="text-sm text-gray-600">알림 시간 설정</Label>
+            <Label className="text-sm font-medium text-gray-700">알림 시간 설정</Label>
 
             {/* 시간 추가 */}
             <div className="flex gap-2">
@@ -170,7 +171,7 @@ export function MessageForm({ onSubmit, initialData, isLoading }: MessageFormPro
                 type="time"
                 value={newTime}
                 onChange={(e) => setNewTime(e.target.value)}
-                className="flex-1"
+                className="flex-1 text-gray-900"
               />
               <Button
                 type="button"
@@ -178,6 +179,7 @@ export function MessageForm({ onSubmit, initialData, isLoading }: MessageFormPro
                 size="icon"
                 onClick={handleAddTime}
                 disabled={!newTime}
+                className="border-gray-400 text-gray-700 hover:bg-gray-200"
               >
                 <Plus className="w-5 h-5" />
               </Button>
