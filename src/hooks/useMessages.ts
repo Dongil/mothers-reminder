@@ -185,6 +185,9 @@ export function useMessages(options: UseMessagesOptions = {}): UseMessagesReturn
         throw deleteError;
       }
 
+      // 로컬 상태에서도 삭제
+      setMessages((prev) => prev.filter((msg) => msg.id !== id));
+
       return true;
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : '메시지 삭제에 실패했습니다';
