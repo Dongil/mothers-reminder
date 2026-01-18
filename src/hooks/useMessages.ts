@@ -132,7 +132,7 @@ export function useMessages(options: UseMessagesOptions = {}): UseMessagesReturn
       const errorMessage = err instanceof Error ? err.message : '메시지 작성에 실패했습니다';
       setError(errorMessage);
       console.error('Failed to create message:', err);
-      return null;
+      throw err; // 상위로 에러 전파
     }
   }, [isReady]);
 
