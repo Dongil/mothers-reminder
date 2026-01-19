@@ -11,10 +11,46 @@ export default function DisplayPage() {
   // 오디오 활성화 상태 (브라우저 autoplay 정책 대응)
   const [audioEnabled, setAudioEnabled] = useState(false);
   const [isSpeaking, setIsSpeaking] = useState(false);
+  const [wakeLockActive, setWakeLockActive] = useState(false);
 
   // 마지막 방문 페이지 저장
   useEffect(() => {
     localStorage.setItem(LAST_PAGE_KEY, '/display');
+  }, []);
+
+  // Wake Lock API로 화면 꺼짐 방지
+  useEffect(() => {
+    let wakeLock: WakeLockSentinel | null = null;
+
+    const requestWakeLock = async () => {
+      try {
+        if ('wakeLock' in navigator) {
+          wakeLock = await navigator.wakeLock.request('screen');
+          setWakeLockActive(true);
+          wakeLock.addEventListener('release', () => {
+            setWakeLockActive(false);
+          });
+        }
+      } catch (err) {
+        console.error('Wake Lock error:', err);
+        setWakeLockActive(false);
+      }
+    };
+
+    // 페이지가 다시 보일 때 wake lock 재요청
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'visible') {
+        requestWakeLock();
+      }
+    };
+
+    requestWakeLock();
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+
+    return () => {
+      wakeLock?.release();
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+    };
   }, []);
 
   // 오늘 날짜를 메모이제이션
@@ -136,7 +172,10 @@ export default function DisplayPage() {
         <footer className="fixed bottom-0 left-0 right-0 bg-white border-t px-8 py-4">
           <div className="flex items-center justify-between text-gray-500">
             <span>메시지 {messages.length}개</span>
-            <span>{isSpeaking ? '🔊 읽는 중...' : audioEnabled ? '🔔 알림 활성화됨' : '터치하여 듣기'}</span>
+            <div className="flex items-center gap-4">
+              {wakeLockActive && <span>🔆 화면 유지</span>}
+              <span>{isSpeaking ? '🔊 읽는 중...' : audioEnabled ? '🔔 알림 활성화됨' : '터치하여 듣기'}</span>
+            </div>
           </div>
         </footer>
       </div>
