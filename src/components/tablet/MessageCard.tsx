@@ -47,13 +47,14 @@ export function MessageCard({ message, onSpeak, className }: MessageCardProps) {
         className
       )}
     >
-      <CardContent className="p-6">
+      <CardContent className="p-4 md:p-6">
         {/* 상단: 중요도 배지 + D-day */}
-        <div className="flex items-center justify-between mb-4">
-          <div className="flex items-center gap-3">
+        <div className="flex items-center justify-between mb-3 md:mb-4 gap-2">
+          <div className="flex items-center gap-2 md:gap-3">
             <Badge
               variant={message.priority as 'normal' | 'important' | 'urgent'}
               size="tablet"
+              className="text-xs md:text-base px-2 py-0.5 md:px-4 md:py-2"
             >
               {message.priority === 'urgent' && '🚨 '}
               {message.priority === 'important' && '⭐ '}
@@ -61,23 +62,23 @@ export function MessageCard({ message, onSpeak, className }: MessageCardProps) {
             </Badge>
 
             {nextAlarm && (
-              <span className="text-lg text-gray-500">
+              <span className="text-sm md:text-lg text-gray-500">
                 ⏰ {formatTime(nextAlarm)}
               </span>
             )}
           </div>
 
           {message.is_dday && message.dday_date && (
-            <Badge variant="dday" size="tablet">
+            <Badge variant="dday" size="tablet" className="text-xs md:text-base px-2 py-0.5 md:px-4 md:py-2">
               {formatDday(message.dday_date)}
               {message.dday_label && ` ${message.dday_label}`}
             </Badge>
           )}
         </div>
 
-        {/* 메시지 내용 - 큰 글씨 */}
-        <div className="mb-6">
-          <p className="text-[100px] leading-tight font-medium text-gray-900 break-words">
+        {/* 메시지 내용 - 큰 글씨 (태블릿에서 100px) */}
+        <div className="mb-4 md:mb-6">
+          <p className="text-3xl md:text-[100px] md:leading-none leading-tight font-medium text-gray-900 break-words">
             {message.content}
           </p>
         </div>
@@ -94,24 +95,23 @@ export function MessageCard({ message, onSpeak, className }: MessageCardProps) {
         )}
 
         {/* 하단: 작성자 + 듣기 버튼 */}
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-2 text-lg text-gray-500">
-            <User className="w-5 h-5" />
-            <span>가족</span>
-            <span className="mx-2">•</span>
-            <Calendar className="w-5 h-5" />
-            <span>{message.display_date}</span>
+        <div className="flex items-center justify-between gap-2">
+          <div className="flex items-center gap-1 md:gap-2 text-sm md:text-lg text-gray-500 min-w-0">
+            <User className="w-4 h-4 md:w-5 md:h-5 shrink-0" />
+            <span className="truncate">가족</span>
+            <span className="mx-1 md:mx-2">•</span>
+            <Calendar className="w-4 h-4 md:w-5 md:h-5 shrink-0" />
+            <span className="truncate">{message.display_date}</span>
           </div>
 
           {message.tts_enabled && (
             <Button
               variant="tablet"
-              size="tablet"
               onClick={handleSpeak}
-              className="gap-3"
+              className="gap-1 md:gap-3 px-3 py-2 md:px-8 md:py-4 text-sm md:text-2xl h-auto min-w-0 md:min-w-[200px]"
             >
-              <Volume2 className="w-7 h-7" />
-              지금 듣기
+              <Volume2 className="w-4 h-4 md:w-7 md:h-7" />
+              듣기
             </Button>
           )}
         </div>

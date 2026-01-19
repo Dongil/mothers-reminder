@@ -127,10 +127,10 @@ export default function DisplayPage() {
           className="fixed inset-0 z-50 bg-blue-600 flex flex-col items-center justify-center cursor-pointer"
           onClick={handleEnableAudio}
         >
-          <div className="text-white text-center">
-            <div className="text-8xl mb-8">👆</div>
-            <h1 className="text-5xl font-bold mb-4">화면을 터치하세요</h1>
-            <p className="text-2xl opacity-80">알림 소리를 활성화합니다</p>
+          <div className="text-white text-center px-4">
+            <div className="text-5xl md:text-8xl mb-4 md:mb-8">👆</div>
+            <h1 className="text-2xl md:text-5xl font-bold mb-2 md:mb-4">화면을 터치하세요</h1>
+            <p className="text-base md:text-2xl opacity-80">알림 소리를 활성화합니다</p>
           </div>
         </div>
       )}
@@ -143,15 +143,15 @@ export default function DisplayPage() {
         <Header familyName="우리 가족" />
 
         {/* 메시지 목록 */}
-        <main className="p-8">
+        <main className="p-4 md:p-8">
           {loading ? (
             <div className="flex items-center justify-center h-64">
-              <div className="text-2xl text-gray-400">불러오는 중...</div>
+              <div className="text-lg md:text-2xl text-gray-400">불러오는 중...</div>
             </div>
           ) : messages.length === 0 ? (
-            <div className="flex flex-col items-center justify-center h-64">
-              <p className="text-3xl text-gray-400 mb-4">오늘의 메시지가 없습니다</p>
-              <p className="text-xl text-gray-300">
+            <div className="flex flex-col items-center justify-center h-64 px-4">
+              <p className="text-xl md:text-3xl text-gray-400 mb-2 md:mb-4 text-center">오늘의 메시지가 없습니다</p>
+              <p className="text-base md:text-xl text-gray-300 text-center">
                 가족이 새 메시지를 보내면 여기에 표시됩니다
               </p>
             </div>
@@ -169,8 +169,8 @@ export default function DisplayPage() {
         </main>
 
         {/* 하단 상태 표시 */}
-        <footer className="fixed bottom-0 left-0 right-0 bg-white border-t px-8 py-4">
-          <div className="flex items-center justify-between text-gray-500">
+        <footer className="fixed bottom-0 left-0 right-0 bg-white border-t px-4 md:px-8 py-2 md:py-4">
+          <div className="flex items-center justify-between text-sm md:text-base text-gray-500">
             <span>메시지 {messages.length}개</span>
             <div className="flex items-center gap-4">
               {wakeLockActive && <span>🔆 화면 유지</span>}

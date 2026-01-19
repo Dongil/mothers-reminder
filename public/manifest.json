@@ -4,7 +4,7 @@
   "description": "경도 인지 장애 어르신을 위한 디지털 메시지 보드",
   "start_url": "/",
   "display": "standalone",
-  "orientation": "portrait",
+  "orientation": "any",
   "background_color": "#ffffff",
   "theme_color": "#2563eb",
   "icons": [
