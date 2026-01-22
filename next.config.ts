@@ -56,7 +56,8 @@ const withPWA = withPWAInit({
 });
 
 const nextConfig: NextConfig = {
-  // webpack 사용 시 빈 설정
+  // Turbopack 설정 (빌드 에러 방지)
+  turbopack: {},
 };
 
 export default withPWA(nextConfig);
