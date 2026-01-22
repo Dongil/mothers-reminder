@@ -1,9 +1,10 @@
 'use client';
 
-import React, { useEffect, useMemo, useState, useCallback } from 'react';
+import React, { useEffect, useMemo, useState, useCallback, useRef } from 'react';
 import { Header, MessageCard, NightMode } from '@/components/tablet';
-import { useMessages, useNightMode } from '@/hooks';
+import { useMessages, useNightMode, useDateRefresh } from '@/hooks';
 import { useNotifications } from '@/hooks/useNotifications';
+import { getCurrentTimeString } from '@/lib/utils';
 
 const LAST_PAGE_KEY = 'mothers-reminder-last-page';
 
@@ -12,6 +13,8 @@ export default function DisplayPage() {
   const [audioEnabled, setAudioEnabled] = useState(false);
   const [isSpeaking, setIsSpeaking] = useState(false);
   const [wakeLockActive, setWakeLockActive] = useState(false);
+  const [currentTime, setCurrentTime] = useState(getCurrentTimeString());
+  const lastScrolledTimeRef = useRef<string | null>(null);
 
   // 마지막 방문 페이지 저장
   useEffect(() => {
@@ -56,7 +59,7 @@ export default function DisplayPage() {
   // 오늘 날짜를 메모이제이션
   const today = useMemo(() => new Date(), []);
 
-  const { messages, loading } = useMessages({
+  const { messages, loading, refreshMessages } = useMessages({
     date: today,
     realtime: true,
   });
@@ -66,6 +69,47 @@ export default function DisplayPage() {
     soundEnabled: true,
     ttsEnabled: true,
   });
+
+  // 자정 감지 - 날짜가 바뀌면 메시지 새로고침
+  useDateRefresh({
+    onDateChange: useCallback(() => {
+      refreshMessages();
+      // 스크롤 상태 초기화
+      lastScrolledTimeRef.current = null;
+    }, [refreshMessages]),
+    enabled: true,
+  });
+
+  // 매 분마다 현재 시간 업데이트 및 자동 스크롤
+  useEffect(() => {
+    const checkTimeAndScroll = () => {
+      const newTime = getCurrentTimeString();
+      setCurrentTime(newTime);
+
+      // 해당 시간의 메시지가 있으면 스크롤
+      if (newTime !== lastScrolledTimeRef.current) {
+        const messageWithTime = messages.find(
+          (msg) => msg.display_time === newTime
+        );
+
+        if (messageWithTime) {
+          const element = document.getElementById(`message-${messageWithTime.id}`);
+          if (element) {
+            element.scrollIntoView({ behavior: 'smooth', block: 'start' });
+            lastScrolledTimeRef.current = newTime;
+          }
+        }
+      }
+    };
+
+    // 초기 실행
+    checkTimeAndScroll();
+
+    // 매 분마다 확인
+    const interval = setInterval(checkTimeAndScroll, 60000);
+
+    return () => clearInterval(interval);
+  }, [messages]);
 
   // 알림 권한 요청
   useEffect(() => {
@@ -160,6 +204,7 @@ export default function DisplayPage() {
               {messages.map((message) => (
                 <MessageCard
                   key={message.id}
+                  id={`message-${message.id}`}
                   message={message}
                   onSpeak={handleSpeak}
                 />

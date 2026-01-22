@@ -1,7 +1,7 @@
 'use client';
 
 import React from 'react';
-import { Volume2, Calendar, User } from 'lucide-react';
+import { Volume2, Calendar, User, Clock } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -12,9 +12,10 @@ interface MessageCardProps {
   message: Message;
   onSpeak?: (text: string) => void;
   className?: string;
+  id?: string;
 }
 
-export function MessageCard({ message, onSpeak, className }: MessageCardProps) {
+export function MessageCard({ message, onSpeak, className, id }: MessageCardProps) {
   const priorityColor = getPriorityColor(message.priority as Priority);
   const priorityLabel = getPriorityLabel(message.priority as Priority);
 
@@ -40,6 +41,7 @@ export function MessageCard({ message, onSpeak, className }: MessageCardProps) {
 
   return (
     <Card
+      id={id}
       className={cn(
         'border-4 transition-all',
         priorityColor,
@@ -48,7 +50,7 @@ export function MessageCard({ message, onSpeak, className }: MessageCardProps) {
       )}
     >
       <CardContent className="p-4 md:p-6">
-        {/* 상단: 중요도 배지 + D-day */}
+        {/* 상단: 중요도 배지 + D-day + 표시 시간 */}
         <div className="flex items-center justify-between mb-3 md:mb-4 gap-2">
           <div className="flex items-center gap-2 md:gap-3">
             <Badge
@@ -60,6 +62,14 @@ export function MessageCard({ message, onSpeak, className }: MessageCardProps) {
               {message.priority === 'important' && '⭐ '}
               {priorityLabel}
             </Badge>
+
+            {/* 표시 시간 */}
+            {message.display_time && (
+              <span className="text-sm md:text-lg text-blue-600 font-medium flex items-center gap-1">
+                <Clock className="w-4 h-4 md:w-5 md:h-5" />
+                {formatTime(message.display_time)}
+              </span>
+            )}
 
             {nextAlarm && (
               <span className="text-sm md:text-lg text-gray-500">

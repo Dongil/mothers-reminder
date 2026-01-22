@@ -1,9 +1,10 @@
 'use client';
 
-import { useEffect, useState, useCallback } from 'react';
+import { useEffect, useState, useCallback, useMemo } from 'react';
 import { createClient } from '@/lib/supabase/client';
 import type { Message, MessageInsert, MessageUpdate, User } from '@/types/database';
 import { format } from 'date-fns';
+import { getCurrentTimeString } from '@/lib/utils';
 
 interface UseMessagesOptions {
   familyId?: string;
@@ -21,12 +22,75 @@ interface UseMessagesReturn {
   refreshMessages: () => Promise<void>;
 }
 
+/**
+ * 메시지 정렬 함수
+ * 1. 현재 시간 이후 메시지 (시간순 오름차순)
+ * 2. 종일 메시지 (priority DESC, created_at DESC)
+ * 3. 지나간 메시지 (시간순 내림차순)
+ */
+function sortMessages(messages: Message[]): Message[] {
+  const currentTime = getCurrentTimeString();
+
+  // 메시지를 3개 그룹으로 분류
+  const upcomingMessages: Message[] = [];
+  const allDayMessages: Message[] = [];
+  const passedMessages: Message[] = [];
+
+  for (const msg of messages) {
+    if (!msg.display_time) {
+      // 종일 메시지
+      allDayMessages.push(msg);
+    } else if (msg.display_time > currentTime) {
+      // 아직 안 온 시간
+      upcomingMessages.push(msg);
+    } else {
+      // 지나간 시간
+      passedMessages.push(msg);
+    }
+  }
+
+  // 각 그룹 정렬
+  // 1. 다가오는 메시지: 시간순 오름차순
+  upcomingMessages.sort((a, b) => {
+    const timeCompare = (a.display_time || '').localeCompare(b.display_time || '');
+    if (timeCompare !== 0) return timeCompare;
+    // 시간이 같으면 priority로
+    return getPriorityWeight(b.priority) - getPriorityWeight(a.priority);
+  });
+
+  // 2. 종일 메시지: priority DESC, created_at DESC
+  allDayMessages.sort((a, b) => {
+    const priorityCompare = getPriorityWeight(b.priority) - getPriorityWeight(a.priority);
+    if (priorityCompare !== 0) return priorityCompare;
+    return new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
+  });
+
+  // 3. 지나간 메시지: 시간순 내림차순
+  passedMessages.sort((a, b) => {
+    const timeCompare = (b.display_time || '').localeCompare(a.display_time || '');
+    if (timeCompare !== 0) return timeCompare;
+    return getPriorityWeight(b.priority) - getPriorityWeight(a.priority);
+  });
+
+  return [...upcomingMessages, ...allDayMessages, ...passedMessages];
+}
+
+function getPriorityWeight(priority: string): number {
+  switch (priority) {
+    case 'urgent': return 3;
+    case 'important': return 2;
+    case 'normal': return 1;
+    default: return 0;
+  }
+}
+
 export function useMessages(options: UseMessagesOptions = {}): UseMessagesReturn {
   const { familyId, date, realtime = true } = options;
-  const [messages, setMessages] = useState<Message[]>([]);
+  const [rawMessages, setRawMessages] = useState<Message[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [isReady, setIsReady] = useState(false);
+  const [currentMinute, setCurrentMinute] = useState(getCurrentTimeString());
 
   // 싱글톤 클라이언트 (매 렌더링마다 같은 인스턴스)
   const supabase = createClient();
@@ -37,6 +101,20 @@ export function useMessages(options: UseMessagesOptions = {}): UseMessagesReturn
       setIsReady(true);
     }
   }, []);
+
+  // 매 분마다 현재 시간 업데이트 (정렬 갱신용)
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setCurrentMinute(getCurrentTimeString());
+    }, 60000);
+
+    return () => clearInterval(interval);
+  }, []);
+
+  // 정렬된 메시지 (현재 시간 기준)
+  const messages = useMemo(() => {
+    return sortMessages(rawMessages);
+  }, [rawMessages, currentMinute]);
 
   // 메시지 조회
   const fetchMessages = useCallback(async () => {
@@ -50,9 +128,7 @@ export function useMessages(options: UseMessagesOptions = {}): UseMessagesReturn
 
       let query = supabase
         .from('messages')
-        .select('*')
-        .order('priority', { ascending: false })
-        .order('created_at', { ascending: false });
+        .select('*');
 
       // 가족 ID 필터
       if (familyId) {
@@ -74,7 +150,7 @@ export function useMessages(options: UseMessagesOptions = {}): UseMessagesReturn
         throw fetchError;
       }
 
-      setMessages((data as unknown as Message[]) || []);
+      setRawMessages((data as unknown as Message[]) || []);
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : '메시지를 불러오는데 실패했습니다';
       setError(errorMessage);
@@ -186,7 +262,7 @@ export function useMessages(options: UseMessagesOptions = {}): UseMessagesReturn
       }
 
       // 로컬 상태에서도 삭제
-      setMessages((prev) => prev.filter((msg) => msg.id !== id));
+      setRawMessages((prev) => prev.filter((msg) => msg.id !== id));
 
       return true;
     } catch (err) {
@@ -227,15 +303,15 @@ export function useMessages(options: UseMessagesOptions = {}): UseMessagesReturn
       .channel(channelName)
       .on('postgres_changes', subscriptionConfig, (payload) => {
         if (payload.eventType === 'INSERT') {
-          setMessages((prev) => [payload.new as Message, ...prev]);
+          setRawMessages((prev) => [payload.new as Message, ...prev]);
         } else if (payload.eventType === 'UPDATE') {
-          setMessages((prev) =>
+          setRawMessages((prev) =>
             prev.map((msg) =>
               msg.id === payload.new.id ? (payload.new as Message) : msg
             )
           );
         } else if (payload.eventType === 'DELETE') {
-          setMessages((prev) =>
+          setRawMessages((prev) =>
             prev.filter((msg) => msg.id !== payload.old.id)
           );
         }

@@ -163,3 +163,32 @@ export function getMinutesUntilTime(time: string): number {
 export function getTodayString(): string {
   return format(new Date(), 'yyyy-MM-dd');
 }
+
+/**
+ * 시간에 오프셋(분)을 더해서 새 시간 반환
+ * @param time "HH:MM" 형식의 시간
+ * @param offsetMinutes 분 단위 오프셋 (양수: 이후, 음수: 이전)
+ * @returns "HH:MM" 형식의 새 시간, 범위 벗어나면 null
+ */
+export function calculateTimeOffset(time: string, offsetMinutes: number): string | null {
+  const [hours, minutes] = time.split(':').map(Number);
+  const totalMinutes = hours * 60 + minutes + offsetMinutes;
+
+  // 00:00 ~ 23:59 범위 체크
+  if (totalMinutes < 0 || totalMinutes >= 24 * 60) {
+    return null;
+  }
+
+  const newHours = Math.floor(totalMinutes / 60);
+  const newMinutes = totalMinutes % 60;
+
+  return `${newHours.toString().padStart(2, '0')}:${newMinutes.toString().padStart(2, '0')}`;
+}
+
+/**
+ * 현재 시간을 "HH:MM" 형식으로 반환
+ */
+export function getCurrentTimeString(): string {
+  const now = new Date();
+  return `${now.getHours().toString().padStart(2, '0')}:${now.getMinutes().toString().padStart(2, '0')}`;
+}

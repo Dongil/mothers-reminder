@@ -1,11 +1,11 @@
 'use client';
 
-import React, { useMemo, useEffect } from 'react';
+import React, { useMemo, useEffect, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
-import { Plus, MessageSquare, Monitor, LogOut } from 'lucide-react';
+import { Plus, MessageSquare, Monitor, LogOut, Calendar, ListChecks } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { MessageList } from '@/components/mobile';
-import { useMessages } from '@/hooks';
+import { useMessages, useDateRefresh } from '@/hooks';
 import { createClient } from '@/lib/supabase/client';
 import type { Message } from '@/types/database';
 
@@ -23,8 +23,16 @@ export default function MobileHomePage() {
   // 오늘 날짜를 메모이제이션하여 불필요한 리렌더링 방지
   const today = useMemo(() => new Date(), []);
 
-  const { messages, loading, deleteMessage } = useMessages({
+  const { messages, loading, deleteMessage, refreshMessages } = useMessages({
     date: today,
+  });
+
+  // 자정 감지 - 날짜가 바뀌면 메시지 새로고침
+  useDateRefresh({
+    onDateChange: useCallback(() => {
+      refreshMessages();
+    }, [refreshMessages]),
+    enabled: true,
   });
 
   const handleNewMessage = () => {
@@ -58,6 +66,24 @@ export default function MobileHomePage() {
             <h1 className="text-xl font-bold text-white">가족 메시지</h1>
           </div>
           <div className="flex items-center gap-1">
+            <Button
+              variant="ghost"
+              size="icon"
+              className="text-white hover:bg-blue-500"
+              onClick={() => router.push('/messages/calendar')}
+              title="달력 보기"
+            >
+              <Calendar className="w-5 h-5" />
+            </Button>
+            <Button
+              variant="ghost"
+              size="icon"
+              className="text-white hover:bg-blue-500"
+              onClick={() => router.push('/messages/manage')}
+              title="메시지 관리"
+            >
+              <ListChecks className="w-5 h-5" />
+            </Button>
             <Button
               variant="ghost"
               size="icon"

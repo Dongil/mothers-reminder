@@ -56,8 +56,7 @@ const withPWA = withPWAInit({
 });
 
 const nextConfig: NextConfig = {
-  // Turbopack 설정 (Next.js 16+ 호환)
-  turbopack: {},
+  // webpack 사용 시 빈 설정
 };
 
 export default withPWA(nextConfig);

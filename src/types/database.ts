@@ -78,6 +78,7 @@ export type Database = {
           content: string;
           priority: 'normal' | 'important' | 'urgent';
           display_date: string;
+          display_time: string | null;
           display_duration: number;
           display_forever: boolean;
           photo_url: string | null;
@@ -104,6 +105,7 @@ export type Database = {
           content: string;
           priority?: 'normal' | 'important' | 'urgent';
           display_date: string;
+          display_time?: string | null;
           display_duration?: number;
           display_forever?: boolean;
           photo_url?: string | null;
@@ -130,6 +132,7 @@ export type Database = {
           content?: string;
           priority?: 'normal' | 'important' | 'urgent';
           display_date?: string;
+          display_time?: string | null;
           display_duration?: number;
           display_forever?: boolean;
           photo_url?: string | null;

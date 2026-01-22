@@ -51,6 +51,7 @@ export default function EditMessagePage({ params }: EditMessagePageProps) {
     content: string;
     priority: 'normal' | 'important' | 'urgent';
     display_date: string;
+    display_time: string | null;
     tts_enabled: boolean;
     tts_times: string[];
   }) => {
@@ -66,6 +67,7 @@ export default function EditMessagePage({ params }: EditMessagePageProps) {
           content: data.content,
           priority: data.priority,
           display_date: data.display_date,
+          display_time: data.display_time,
           tts_enabled: data.tts_enabled,
           tts_times: data.tts_times,
           updated_at: new Date().toISOString(),
@@ -123,6 +125,7 @@ export default function EditMessagePage({ params }: EditMessagePageProps) {
             content: message.content,
             priority: message.priority,
             display_date: message.display_date,
+            display_time: message.display_time,
             tts_enabled: message.tts_enabled,
             tts_times: message.tts_times || [],
           }}

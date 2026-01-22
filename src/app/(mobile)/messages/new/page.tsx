@@ -18,6 +18,7 @@ export default function NewMessagePage() {
     content: string;
     priority: 'normal' | 'important' | 'urgent';
     display_date: string;
+    display_time: string | null;
     tts_enabled: boolean;
     tts_times: string[];
   }) => {
@@ -27,6 +28,7 @@ export default function NewMessagePage() {
         content: data.content,
         priority: data.priority,
         display_date: data.display_date,
+        display_time: data.display_time,
         tts_enabled: data.tts_enabled,
         tts_times: data.tts_times,
       });

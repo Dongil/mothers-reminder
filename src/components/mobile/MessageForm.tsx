@@ -1,15 +1,15 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
-import { Plus, X, Volume2 } from 'lucide-react';
+import { Plus, X, Volume2, Clock } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
-import { cn, getTodayString } from '@/lib/utils';
+import { cn, getTodayString, calculateTimeOffset } from '@/lib/utils';
 
 // 폼 스키마
 const messageSchema = z.object({
@@ -19,6 +19,7 @@ const messageSchema = z.object({
     .max(500, '메시지는 500자 이내로 입력해주세요'),
   priority: z.enum(['normal', 'important', 'urgent']),
   display_date: z.string().min(1, '날짜를 선택해주세요'),
+  display_time: z.string().nullable(),
   tts_enabled: z.boolean(),
   tts_times: z.array(z.string()),
 });
@@ -31,11 +32,27 @@ interface MessageFormProps {
   isLoading?: boolean;
 }
 
+// 알림 바로가기 버튼 설정
+const TIME_OFFSET_BUTTONS = [
+  { label: '-60분', offset: -60 },
+  { label: '-30분', offset: -30 },
+  { label: '-15분', offset: -15 },
+  { label: '-10분', offset: -10 },
+  { label: '-5분', offset: -5 },
+  { label: '정각', offset: 0 },
+  { label: '+5분', offset: 5 },
+  { label: '+10분', offset: 10 },
+];
+
 export function MessageForm({ onSubmit, initialData, isLoading }: MessageFormProps) {
   const [ttsTimes, setTtsTimes] = useState<string[]>(
     initialData?.tts_times || []
   );
   const [newTime, setNewTime] = useState('');
+  // 수정 모드에서는 기존 값 사용, 새 메시지에서는 시간 지정이 기본값
+  const [isAllDay, setIsAllDay] = useState(
+    initialData ? initialData.display_time === null : false
+  );
 
   const {
     register,
@@ -49,6 +66,8 @@ export function MessageForm({ onSubmit, initialData, isLoading }: MessageFormPro
       content: initialData?.content || '',
       priority: initialData?.priority || 'normal',
       display_date: initialData?.display_date || getTodayString(),
+      // 수정 모드에서는 기존 값 사용, 새 메시지에서는 09:00이 기본값
+      display_time: initialData ? initialData.display_time : '09:00',
       tts_enabled: initialData?.tts_enabled ?? true,
       tts_times: initialData?.tts_times || [],
     },
@@ -56,6 +75,17 @@ export function MessageForm({ onSubmit, initialData, isLoading }: MessageFormPro
 
   const ttsEnabled = watch('tts_enabled');
   const priority = watch('priority');
+  const displayTime = watch('display_time');
+
+  // 바로가기 버튼으로 추가할 수 있는 시간 목록 계산
+  const availableOffsetTimes = useMemo(() => {
+    if (!displayTime) return {};
+    return TIME_OFFSET_BUTTONS.reduce((acc, btn) => {
+      const time = calculateTimeOffset(displayTime, btn.offset);
+      acc[btn.offset] = time;
+      return acc;
+    }, {} as Record<number, string | null>);
+  }, [displayTime]);
 
   const handleAddTime = () => {
     if (newTime && !ttsTimes.includes(newTime)) {
@@ -66,15 +96,37 @@ export function MessageForm({ onSubmit, initialData, isLoading }: MessageFormPro
     }
   };
 
+  const handleAddTimeFromOffset = (offset: number) => {
+    const time = availableOffsetTimes[offset];
+    if (time && !ttsTimes.includes(time)) {
+      const updated = [...ttsTimes, time].sort();
+      setTtsTimes(updated);
+      setValue('tts_times', updated);
+    }
+  };
+
   const handleRemoveTime = (time: string) => {
     const updated = ttsTimes.filter((t) => t !== time);
     setTtsTimes(updated);
     setValue('tts_times', updated);
   };
 
+  const handleToggleAllDay = () => {
+    if (isAllDay) {
+      // 종일 -> 시간 지정
+      setIsAllDay(false);
+      setValue('display_time', '09:00');
+    } else {
+      // 시간 지정 -> 종일
+      setIsAllDay(true);
+      setValue('display_time', null);
+    }
+  };
+
   const onFormSubmit = async (data: MessageFormData) => {
     await onSubmit({
       ...data,
+      display_time: isAllDay ? null : data.display_time,
       tts_times: ttsTimes,
     });
   };
@@ -128,20 +180,60 @@ export function MessageForm({ onSubmit, initialData, isLoading }: MessageFormPro
         </div>
       </div>
 
-      {/* 표시 날짜 */}
-      <div className="space-y-2">
-        <Label htmlFor="display_date" className="text-base font-semibold text-gray-900">
-          표시 날짜 *
-        </Label>
-        <Input
-          id="display_date"
-          type="date"
-          className="text-lg"
-          {...register('display_date')}
-        />
-        {errors.display_date && (
-          <p className="text-sm text-red-500">{errors.display_date.message}</p>
-        )}
+      {/* 표시 날짜 및 시간 */}
+      <div className="space-y-4">
+        <div className="space-y-2">
+          <Label htmlFor="display_date" className="text-base font-semibold text-gray-900">
+            표시 날짜 *
+          </Label>
+          <Input
+            id="display_date"
+            type="date"
+            className="text-lg"
+            {...register('display_date')}
+          />
+          {errors.display_date && (
+            <p className="text-sm text-red-500">{errors.display_date.message}</p>
+          )}
+        </div>
+
+        {/* 표시 시간 */}
+        <div className="space-y-2">
+          <Label className="text-base font-semibold text-gray-900 flex items-center gap-2">
+            <Clock className="w-5 h-5 text-gray-700" />
+            표시 시간
+          </Label>
+          <div className="flex gap-2 items-stretch">
+            <Input
+              type="time"
+              disabled={isAllDay}
+              className={cn(
+                'flex-1 text-lg',
+                isAllDay && 'opacity-50'
+              )}
+              value={displayTime || ''}
+              onChange={(e) => {
+                setValue('display_time', e.target.value);
+                if (isAllDay) setIsAllDay(false);
+              }}
+            />
+            <button
+              type="button"
+              onClick={handleToggleAllDay}
+              className={cn(
+                'px-6 rounded-lg border-2 font-medium transition-all text-base flex items-center justify-center',
+                isAllDay
+                  ? 'border-blue-500 bg-blue-100 text-blue-800 ring-2 ring-blue-200'
+                  : 'border-gray-300 bg-gray-50 text-gray-600 hover:bg-gray-100'
+              )}
+            >
+              종일
+            </button>
+          </div>
+          <p className="text-sm text-gray-500">
+            {isAllDay ? '하루 종일 표시됩니다' : '지정한 시간에 상단에 표시됩니다'}
+          </p>
+        </div>
       </div>
 
       {/* TTS 설정 */}
@@ -163,6 +255,35 @@ export function MessageForm({ onSubmit, initialData, isLoading }: MessageFormPro
 
         {ttsEnabled && (
           <div className="space-y-3">
+            {/* 바로가기 버튼 */}
+            {!isAllDay && displayTime && (
+              <div className="space-y-2">
+                <Label className="text-sm font-medium text-gray-700">표시 시간 기준 알림추가</Label>
+                <div className="flex flex-wrap gap-2">
+                  {TIME_OFFSET_BUTTONS.map((btn) => {
+                    const time = availableOffsetTimes[btn.offset];
+                    const isDisabled = !time || ttsTimes.includes(time);
+                    return (
+                      <button
+                        key={btn.offset}
+                        type="button"
+                        onClick={() => handleAddTimeFromOffset(btn.offset)}
+                        disabled={isDisabled}
+                        className={cn(
+                          'px-3 py-2 text-sm font-medium rounded-lg border-2 transition-all',
+                          isDisabled
+                            ? 'bg-gray-100 text-gray-400 border-gray-200 cursor-not-allowed'
+                            : 'bg-white text-gray-700 border-gray-300 hover:bg-blue-50 hover:border-blue-400'
+                        )}
+                      >
+                        {btn.label}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
+
             <Label className="text-sm font-medium text-gray-700">알림 시간 설정</Label>
 
             {/* 시간 추가 */}
