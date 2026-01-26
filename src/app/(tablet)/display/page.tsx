@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useEffect, useMemo, useState, useCallback, useRef } from 'react';
+import React, { useEffect, useState, useCallback, useRef } from 'react';
 import { Header, MessageCard, NightMode } from '@/components/tablet';
 import { useMessages, useNightMode, useDateRefresh } from '@/hooks';
 import { useNotifications } from '@/hooks/useNotifications';
@@ -56,29 +56,35 @@ export default function DisplayPage() {
     };
   }, []);
 
-  // 오늘 날짜를 메모이제이션
-  const today = useMemo(() => new Date(), []);
+  // 오늘 날짜를 상태로 관리 (자정 후 업데이트 위해)
+  const [today, setToday] = useState(() => new Date());
 
   const { messages, loading, refreshMessages } = useMessages({
     date: today,
     realtime: true,
   });
 
-  const { isNightMode, exitNightMode } = useNightMode('20:00', '06:00');
+  const { isNightMode, exitNightMode: originalExitNightMode } = useNightMode('20:00', '06:00');
   const { scheduleNotifications, requestPermission } = useNotifications({
     soundEnabled: true,
     ttsEnabled: true,
   });
 
-  // 자정 감지 - 날짜가 바뀌면 메시지 새로고침
-  useDateRefresh({
+  // 자정 감지 - 날짜가 바뀌면 today 상태 업데이트 후 메시지 새로고침
+  const { checkDateChange } = useDateRefresh({
     onDateChange: useCallback(() => {
-      refreshMessages();
+      setToday(new Date());
       // 스크롤 상태 초기화
       lastScrolledTimeRef.current = null;
-    }, [refreshMessages]),
+    }, []),
     enabled: true,
   });
+
+  // 야간 모드 종료 시 날짜도 확인
+  const exitNightMode = useCallback(() => {
+    checkDateChange();
+    originalExitNightMode();
+  }, [checkDateChange, originalExitNightMode]);
 
   // 매 분마다 현재 시간 업데이트 및 자동 스크롤
   useEffect(() => {

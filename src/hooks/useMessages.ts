@@ -299,17 +299,41 @@ export function useMessages(options: UseMessagesOptions = {}): UseMessagesReturn
           table: 'messages',
         };
 
+    // 날짜 필터에 맞는지 확인하는 함수
+    const isMessageForDate = (message: Message): boolean => {
+      if (!date) return true; // 날짜 필터 없으면 모두 허용
+      const dateStr = format(date, 'yyyy-MM-dd');
+      return message.display_date === dateStr || message.display_forever === true;
+    };
+
     const channel = supabase
       .channel(channelName)
       .on('postgres_changes', subscriptionConfig, (payload) => {
         if (payload.eventType === 'INSERT') {
-          setRawMessages((prev) => [payload.new as Message, ...prev]);
+          const newMessage = payload.new as Message;
+          // 날짜 필터 확인 후 추가
+          if (isMessageForDate(newMessage)) {
+            setRawMessages((prev) => [newMessage, ...prev]);
+          }
         } else if (payload.eventType === 'UPDATE') {
-          setRawMessages((prev) =>
-            prev.map((msg) =>
-              msg.id === payload.new.id ? (payload.new as Message) : msg
-            )
-          );
+          const updatedMessage = payload.new as Message;
+          setRawMessages((prev) => {
+            // 업데이트된 메시지가 날짜 필터에 맞는지 확인
+            if (isMessageForDate(updatedMessage)) {
+              // 기존에 있으면 업데이트, 없으면 추가 (날짜가 변경되어 필터에 맞게 된 경우)
+              const exists = prev.some((msg) => msg.id === updatedMessage.id);
+              if (exists) {
+                return prev.map((msg) =>
+                  msg.id === updatedMessage.id ? updatedMessage : msg
+                );
+              } else {
+                return [updatedMessage, ...prev];
+              }
+            } else {
+              // 날짜 필터에 안 맞으면 목록에서 제거
+              return prev.filter((msg) => msg.id !== updatedMessage.id);
+            }
+          });
         } else if (payload.eventType === 'DELETE') {
           setRawMessages((prev) =>
             prev.filter((msg) => msg.id !== payload.old.id)
@@ -321,7 +345,7 @@ export function useMessages(options: UseMessagesOptions = {}): UseMessagesReturn
     return () => {
       supabase?.removeChannel(channel);
     };
-  }, [isReady, familyId, realtime]);
+  }, [isReady, familyId, realtime, date]);
 
   return {
     messages,

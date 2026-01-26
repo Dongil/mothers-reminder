@@ -86,6 +86,20 @@ export function useDateRefresh(options: UseDateRefreshOptions = {}) {
     };
   }, [enabled, scheduleMidnightCheck]);
 
+  // 매 분마다 날짜 변경 확인 (PC 시간 변경 대응)
+  useEffect(() => {
+    if (!enabled) return;
+
+    const interval = setInterval(() => {
+      if (checkDateChange()) {
+        // 날짜가 변경됐으면 타이머 재설정
+        scheduleMidnightCheck();
+      }
+    }, 60000); // 1분마다 확인
+
+    return () => clearInterval(interval);
+  }, [enabled, checkDateChange, scheduleMidnightCheck]);
+
   return {
     currentDate: currentDateRef.current,
     checkDateChange,
