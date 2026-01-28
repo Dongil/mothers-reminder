@@ -87,11 +87,11 @@ export function TTSSettingsSection() {
                   onClick={() => handleVoiceChange(voice.id)}
                   className={`p-3 rounded-lg border text-left transition-colors ${
                     settings.tts_voice === voice.id
-                      ? 'border-blue-500 bg-blue-50'
-                      : 'border-gray-200 hover:border-gray-300'
+                      ? 'border-blue-500 bg-blue-50 text-blue-700'
+                      : 'border-gray-300 text-gray-800 hover:border-blue-300 hover:bg-gray-50'
                   }`}
                 >
-                  <div className="text-sm font-medium">
+                  <div className="text-sm font-semibold">
                     {voice.gender === 'female' ? '👩' : '👨'} {voice.name}
                   </div>
                 </button>
@@ -107,10 +107,10 @@ export function TTSSettingsSection() {
                 <button
                   key={option.value}
                   onClick={() => handleSpeedChange(option.value)}
-                  className={`px-4 py-2 rounded-lg border transition-colors ${
+                  className={`px-4 py-2 rounded-lg border font-medium transition-colors ${
                     settings.tts_speed === option.value
                       ? 'border-blue-500 bg-blue-50 text-blue-700'
-                      : 'border-gray-200 hover:border-gray-300'
+                      : 'border-gray-300 text-gray-800 hover:border-blue-300 hover:bg-gray-50'
                   }`}
                 >
                   {option.label}
