@@ -1,6 +1,29 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
 
+// 쿼리 결과 타입
+interface FamilyMemberResult {
+  id: string;
+  role: string;
+  is_active: boolean;
+  joined_at: string;
+  family: {
+    id: string;
+    name: string;
+    code: string;
+    created_by: string;
+    created_at: string;
+  } | null;
+}
+
+interface AdminQueryResult {
+  family_id: string;
+  user: {
+    name: string;
+    nickname: string | null;
+  } | null;
+}
+
 // 랜덤 가족 코드 생성
 function generateFamilyCode(): string {
   const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
@@ -52,9 +75,11 @@ export async function GET() {
       );
     }
 
+    const memberships = (data || []) as unknown as FamilyMemberResult[];
+
     // 각 가족의 관리자 정보 가져오기
-    const familyIds = (data || [])
-      .map(d => (d.family as { id: string } | null)?.id)
+    const familyIds = memberships
+      .map(d => d.family?.id)
       .filter(Boolean) as string[];
 
     let adminMap: Record<string, { name: string; nickname: string | null }> = {};
@@ -73,13 +98,12 @@ export async function GET() {
         .eq('role', 'admin');
 
       if (adminData) {
-        adminData.forEach((item) => {
-          const familyId = item.family_id as string;
-          const userInfo = item.user as { name: string; nickname: string | null } | null;
-          if (userInfo) {
-            adminMap[familyId] = {
-              name: userInfo.name,
-              nickname: userInfo.nickname,
+        const admins = adminData as unknown as AdminQueryResult[];
+        admins.forEach((item) => {
+          if (item.user) {
+            adminMap[item.family_id] = {
+              name: item.user.name,
+              nickname: item.user.nickname,
             };
           }
         });
@@ -87,13 +111,10 @@ export async function GET() {
     }
 
     // 관리자 정보를 포함한 결과 반환
-    const enrichedData = (data || []).map(item => {
-      const family = item.family as { id: string } | null;
-      return {
-        ...item,
-        admin: family ? adminMap[family.id] || null : null,
-      };
-    });
+    const enrichedData = memberships.map(item => ({
+      ...item,
+      admin: item.family ? adminMap[item.family.id] || null : null,
+    }));
 
     return NextResponse.json({ data: enrichedData });
   } catch (error) {
