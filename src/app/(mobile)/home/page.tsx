@@ -155,11 +155,12 @@ export default function MobileHomePage() {
         <Button
           variant="primary"
           size="lg"
-          className="w-14 h-14 rounded-full shadow-lg"
+          className="rounded-full shadow-lg px-5 py-3 h-auto"
           onClick={handleNewMessage}
           disabled={!hasFamily}
         >
-          <Plus className="w-6 h-6" />
+          <Plus className="w-5 h-5" />
+          <span className="font-semibold">메시지 추가</span>
         </Button>
       </div>
     </div>

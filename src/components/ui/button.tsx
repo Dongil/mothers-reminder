@@ -3,6 +3,7 @@ import { Slot } from '@radix-ui/react-slot';
 import { cva, type VariantProps } from 'class-variance-authority';
 import { cn } from '@/lib/utils';
 
+// 모든 variant에 명시적 텍스트 색상 지정 (브라우저 기본값 의존 방지)
 const buttonVariants = cva(
   'inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-lg font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50',
   {
@@ -15,9 +16,9 @@ const buttonVariants = cva(
         destructive:
           'bg-red-600 text-white hover:bg-red-700 focus-visible:ring-red-600',
         outline:
-          'border-2 border-gray-300 bg-white hover:bg-gray-50 focus-visible:ring-gray-500',
+          'border-2 border-blue-500 bg-white text-blue-600 font-semibold hover:bg-blue-50 focus-visible:ring-blue-500',
         ghost:
-          'hover:bg-gray-100 focus-visible:ring-gray-500',
+          'text-gray-700 hover:bg-gray-100 hover:text-gray-900 focus-visible:ring-gray-500',
         link:
           'text-blue-600 underline-offset-4 hover:underline focus-visible:ring-blue-600',
         // 태블릿용 큰 버튼
