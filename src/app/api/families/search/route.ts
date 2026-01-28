@@ -57,7 +57,8 @@ export async function GET(request: NextRequest) {
       .eq('user_id', user.id)
       .in('family_id', familyIds);
 
-    const memberFamilyIds = new Set((memberData || []).map(m => m.family_id));
+    const members = (memberData || []) as { family_id: string }[];
+    const memberFamilyIds = new Set(members.map(m => m.family_id));
 
     // 이미 요청 중인 가족 확인
     const { data: requestData } = await supabase
@@ -67,7 +68,8 @@ export async function GET(request: NextRequest) {
       .eq('status', 'pending')
       .in('family_id', familyIds);
 
-    const pendingFamilyIds = new Set((requestData || []).map(r => r.family_id));
+    const requests = (requestData || []) as { family_id: string }[];
+    const pendingFamilyIds = new Set(requests.map(r => r.family_id));
 
     // 결과 조합
     const results = families.map(family => ({
