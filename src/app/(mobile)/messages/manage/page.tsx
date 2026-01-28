@@ -2,7 +2,7 @@
 
 import React, { useState, useCallback, useEffect, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
-import { ChevronLeft, ChevronRight, ArrowLeft, Pencil, Trash2, Clock, Calendar as CalendarIcon } from 'lucide-react';
+import { ChevronLeft, ChevronRight, ArrowLeft, Pencil, Trash2, Clock, Calendar as CalendarIcon, Home } from 'lucide-react';
 import { format, addDays, subDays, parseISO } from 'date-fns';
 import { ko } from 'date-fns/locale';
 import { Button } from '@/components/ui/button';
@@ -11,11 +11,13 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { createClient } from '@/lib/supabase/client';
 import { cn, formatTime, getPriorityColor, getPriorityLabel, getTodayString } from '@/lib/utils';
+import { useUser } from '@/hooks';
 import type { Message, Priority } from '@/types/database';
 
 function ManagePageContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
+  const { user } = useUser();
   const initialDate = searchParams.get('date') || getTodayString();
 
   const [selectedDate, setSelectedDate] = useState(initialDate);
@@ -25,13 +27,14 @@ function ManagePageContent() {
 
   // 메시지 조회
   const fetchMessages = useCallback(async () => {
-    if (!supabase) return;
+    if (!supabase || !user?.activeFamily?.id) return;
 
     setLoading(true);
     try {
       const { data, error } = await supabase
         .from('messages')
         .select('*')
+        .eq('family_id', user.activeFamily.id)
         .eq('display_date', selectedDate)
         .order('display_time', { ascending: true, nullsFirst: false })
         .order('priority', { ascending: false })
@@ -44,7 +47,7 @@ function ManagePageContent() {
     } finally {
       setLoading(false);
     }
-  }, [supabase, selectedDate]);
+  }, [supabase, selectedDate, user?.activeFamily?.id]);
 
   useEffect(() => {
     fetchMessages();
@@ -96,16 +99,27 @@ function ManagePageContent() {
     <div className="min-h-screen bg-gray-50">
       {/* 헤더 */}
       <header className="bg-blue-600 px-4 py-4 sticky top-0 z-10">
-        <div className="flex items-center gap-3">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <Button
+              variant="ghost"
+              size="icon"
+              className="text-white hover:bg-blue-500"
+              onClick={() => router.back()}
+            >
+              <ArrowLeft className="w-5 h-5" />
+            </Button>
+            <h1 className="text-xl font-bold text-white">{user?.activeFamily?.name || '가족'} 메시지</h1>
+          </div>
           <Button
             variant="ghost"
             size="icon"
             className="text-white hover:bg-blue-500"
-            onClick={() => router.back()}
+            onClick={() => router.push('/home')}
+            title="홈으로"
           >
-            <ArrowLeft className="w-5 h-5" />
+            <Home className="w-5 h-5" />
           </Button>
-          <h1 className="text-xl font-bold text-white">메시지 관리</h1>
         </div>
       </header>
 

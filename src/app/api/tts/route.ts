@@ -3,12 +3,12 @@ import { NextRequest, NextResponse } from 'next/server';
 /**
  * Google Cloud Text-to-Speech API를 사용한 TTS 엔드포인트
  * POST /api/tts
- * Body: { text: string }
+ * Body: { text: string, voice?: string, speed?: number }
  * Response: { audioContent: string (base64) }
  */
 export async function POST(request: NextRequest) {
   try {
-    const { text } = await request.json();
+    const { text, voice, speed } = await request.json();
 
     if (!text || typeof text !== 'string') {
       return NextResponse.json(
@@ -35,6 +35,11 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    // 음성 설정 (기본값: ko-KR-Wavenet-A)
+    const voiceName = voice || 'ko-KR-Wavenet-A';
+    // 속도 설정 (기본값: 0.9)
+    const speakingRate = typeof speed === 'number' ? speed : 0.9;
+
     // Google Cloud TTS API 호출
     const response = await fetch(
       `https://texttospeech.googleapis.com/v1/text:synthesize?key=${apiKey}`,
@@ -47,12 +52,11 @@ export async function POST(request: NextRequest) {
           input: { text },
           voice: {
             languageCode: 'ko-KR',
-            name: 'ko-KR-Wavenet-A', // 여성 음성
-            // 'ko-KR-Wavenet-C' // 남성 음성
+            name: voiceName,
           },
           audioConfig: {
             audioEncoding: 'MP3',
-            speakingRate: 0.9, // 약간 느리게
+            speakingRate: speakingRate,
             pitch: 0,
           },
         }),

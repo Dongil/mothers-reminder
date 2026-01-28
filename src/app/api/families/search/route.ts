@@ -1,0 +1,87 @@
+import { NextRequest, NextResponse } from 'next/server';
+import { createClient } from '@/lib/supabase/server';
+
+// GET: 가족 이름으로 검색
+export async function GET(request: NextRequest) {
+  try {
+    const supabase = await createClient();
+    const { searchParams } = new URL(request.url);
+    const name = searchParams.get('name');
+
+    // 인증 확인
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) {
+      return NextResponse.json(
+        { error: '인증이 필요합니다' },
+        { status: 401 }
+      );
+    }
+
+    if (!name || name.trim().length < 1) {
+      return NextResponse.json(
+        { error: '검색어를 입력해주세요' },
+        { status: 400 }
+      );
+    }
+
+    // 가족 이름으로 검색 (부분 일치)
+    const { data: familiesData, error } = await supabase
+      .from('family')
+      .select('id, name, code, created_at')
+      .ilike('name', `%${name.trim()}%`)
+      .limit(10);
+
+    if (error) {
+      console.error('Family search error:', error);
+      return NextResponse.json(
+        { error: '검색 중 오류가 발생했습니다' },
+        { status: 500 }
+      );
+    }
+
+    const families = familiesData as { id: string; name: string; code: string; created_at: string }[];
+
+    if (!families || families.length === 0) {
+      return NextResponse.json({
+        data: []
+      });
+    }
+
+    // 각 가족에 대해 멤버십/요청 상태 확인
+    const familyIds = families.map(f => f.id);
+
+    // 이미 멤버인 가족 확인
+    const { data: memberData } = await supabase
+      .from('family_members')
+      .select('family_id')
+      .eq('user_id', user.id)
+      .in('family_id', familyIds);
+
+    const memberFamilyIds = new Set((memberData || []).map(m => m.family_id));
+
+    // 이미 요청 중인 가족 확인
+    const { data: requestData } = await supabase
+      .from('family_join_requests')
+      .select('family_id')
+      .eq('user_id', user.id)
+      .eq('status', 'pending')
+      .in('family_id', familyIds);
+
+    const pendingFamilyIds = new Set((requestData || []).map(r => r.family_id));
+
+    // 결과 조합
+    const results = families.map(family => ({
+      ...family,
+      is_member: memberFamilyIds.has(family.id),
+      has_pending_request: pendingFamilyIds.has(family.id),
+    }));
+
+    return NextResponse.json({ data: results });
+  } catch (error) {
+    console.error('Family search error:', error);
+    return NextResponse.json(
+      { error: '서버 오류가 발생했습니다' },
+      { status: 500 }
+    );
+  }
+}

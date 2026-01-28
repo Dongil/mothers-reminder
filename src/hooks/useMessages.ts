@@ -2,7 +2,17 @@
 
 import { useEffect, useState, useCallback, useMemo } from 'react';
 import { createClient } from '@/lib/supabase/client';
-import type { Message, MessageInsert, MessageUpdate, User } from '@/types/database';
+import type { Message, MessageInsert, MessageUpdate, User, Gender } from '@/types/database';
+
+// 작성자 정보가 포함된 메시지 타입
+export interface MessageWithAuthor extends Message {
+  author?: {
+    id: string;
+    name: string;
+    nickname: string | null;
+    gender: Gender | null;
+  };
+}
 import { format } from 'date-fns';
 import { getCurrentTimeString } from '@/lib/utils';
 
@@ -13,7 +23,7 @@ interface UseMessagesOptions {
 }
 
 interface UseMessagesReturn {
-  messages: Message[];
+  messages: MessageWithAuthor[];
   loading: boolean;
   error: string | null;
   createMessage: (message: Omit<MessageInsert, 'author_id' | 'family_id'>) => Promise<Message | null>;
@@ -28,7 +38,7 @@ interface UseMessagesReturn {
  * 2. 종일 메시지 (priority DESC, created_at DESC)
  * 3. 지나간 메시지 (시간순 내림차순)
  */
-function sortMessages(messages: Message[]): Message[] {
+function sortMessages(messages: MessageWithAuthor[]): MessageWithAuthor[] {
   const currentTime = getCurrentTimeString();
 
   // 메시지를 3개 그룹으로 분류
@@ -86,7 +96,7 @@ function getPriorityWeight(priority: string): number {
 
 export function useMessages(options: UseMessagesOptions = {}): UseMessagesReturn {
   const { familyId, date, realtime = true } = options;
-  const [rawMessages, setRawMessages] = useState<Message[]>([]);
+  const [rawMessages, setRawMessages] = useState<MessageWithAuthor[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [isReady, setIsReady] = useState(false);
@@ -128,7 +138,15 @@ export function useMessages(options: UseMessagesOptions = {}): UseMessagesReturn
 
       let query = supabase
         .from('messages')
-        .select('*');
+        .select(`
+          *,
+          author:author_id (
+            id,
+            name,
+            nickname,
+            gender
+          )
+        `);
 
       // 가족 ID 필터
       if (familyId) {
@@ -150,7 +168,7 @@ export function useMessages(options: UseMessagesOptions = {}): UseMessagesReturn
         throw fetchError;
       }
 
-      setRawMessages((data as unknown as Message[]) || []);
+      setRawMessages((data as unknown as MessageWithAuthor[]) || []);
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : '메시지를 불러오는데 실패했습니다';
       setError(errorMessage);
@@ -175,22 +193,34 @@ export function useMessages(options: UseMessagesOptions = {}): UseMessagesReturn
       }
       const user = session.user;
 
-      // 사용자의 family_id 가져오기
-      const { data: userData } = await supabase
-        .from('users')
-        .select('*')
-        .eq('id', user.id)
+      // 활성 가족 ID 가져오기 (family_members에서)
+      const { data: memberDataRaw } = await supabase
+        .from('family_members')
+        .select('family_id')
+        .eq('user_id', user.id)
+        .eq('is_active', true)
         .single();
+      const memberData = memberDataRaw as { family_id: string } | null;
 
-      const userRecord = userData as unknown as User | null;
-      if (!userRecord?.family_id) {
-        throw new Error('가족 정보가 없습니다');
+      // family_members에 없으면 users.family_id로 폴백 (하위 호환성)
+      let activeFamilyId: string | undefined = memberData?.family_id;
+      if (!activeFamilyId) {
+        const { data: userData } = await supabase
+          .from('users')
+          .select('family_id')
+          .eq('id', user.id)
+          .single();
+        activeFamilyId = (userData as { family_id: string | null } | null)?.family_id ?? undefined;
+      }
+
+      if (!activeFamilyId) {
+        throw new Error('활성 가족이 없습니다. 설정에서 가족을 만들거나 참여해주세요.');
       }
 
       const insertData = {
         ...messageData,
         author_id: user.id,
-        family_id: userRecord.family_id,
+        family_id: activeFamilyId,
       } as MessageInsert;
 
       const { data, error: insertError } = await supabase

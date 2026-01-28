@@ -2,10 +2,10 @@
 
 import React, { useMemo, useEffect, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
-import { Plus, MessageSquare, Monitor, LogOut, Calendar, ListChecks } from 'lucide-react';
+import { Plus, MessageSquare, Monitor, LogOut, Calendar, Settings, Users } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { MessageList } from '@/components/mobile';
-import { useMessages, useDateRefresh } from '@/hooks';
+import { useMessages, useDateRefresh, useUser } from '@/hooks';
 import { createClient } from '@/lib/supabase/client';
 import type { Message } from '@/types/database';
 
@@ -14,6 +14,7 @@ const LAST_PAGE_KEY = 'mothers-reminder-last-page';
 export default function MobileHomePage() {
   const router = useRouter();
   const supabase = createClient();
+  const { user, hasFamily, loading: userLoading } = useUser();
 
   // 마지막 방문 페이지 저장
   useEffect(() => {
@@ -24,6 +25,7 @@ export default function MobileHomePage() {
   const today = useMemo(() => new Date(), []);
 
   const { messages, loading, deleteMessage, refreshMessages } = useMessages({
+    familyId: user?.activeFamily?.id,
     date: today,
   });
 
@@ -36,6 +38,10 @@ export default function MobileHomePage() {
   });
 
   const handleNewMessage = () => {
+    if (!hasFamily) {
+      router.push('/settings');
+      return;
+    }
     router.push('/messages/new');
   };
 
@@ -63,7 +69,9 @@ export default function MobileHomePage() {
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
             <MessageSquare className="w-6 h-6 text-white" />
-            <h1 className="text-xl font-bold text-white">가족 메시지</h1>
+            <h1 className="text-xl font-bold text-white">
+              {user?.activeFamily?.name || '가족'} 메시지
+            </h1>
           </div>
           <div className="flex items-center gap-1">
             <Button
@@ -79,19 +87,19 @@ export default function MobileHomePage() {
               variant="ghost"
               size="icon"
               className="text-white hover:bg-blue-500"
-              onClick={() => router.push('/messages/manage')}
-              title="메시지 관리"
+              onClick={() => router.push('/display')}
+              title="태블릿 화면으로 전환"
             >
-              <ListChecks className="w-5 h-5" />
+              <Monitor className="w-5 h-5" />
             </Button>
             <Button
               variant="ghost"
               size="icon"
               className="text-white hover:bg-blue-500"
-              onClick={() => router.push('/display')}
-              title="태블릿 화면으로 전환"
+              onClick={() => router.push('/settings')}
+              title="설정"
             >
-              <Monitor className="w-5 h-5" />
+              <Settings className="w-5 h-5" />
             </Button>
             <Button variant="ghost" size="icon" className="text-white hover:bg-blue-500" onClick={handleLogout}>
               <LogOut className="w-5 h-5" />
@@ -99,6 +107,30 @@ export default function MobileHomePage() {
           </div>
         </div>
       </header>
+
+      {/* 가족 없음 안내 배너 */}
+      {!userLoading && !hasFamily && (
+        <div className="bg-yellow-50 border-b border-yellow-200 px-4 py-3">
+          <div className="flex items-center gap-3">
+            <Users className="w-5 h-5 text-yellow-600 shrink-0" />
+            <div className="flex-1">
+              <p className="text-sm text-yellow-800 font-medium">
+                가족을 만들거나 참여해주세요
+              </p>
+              <p className="text-xs text-yellow-600">
+                메시지를 보내려면 가족 그룹이 필요합니다
+              </p>
+            </div>
+            <Button
+              variant="primary"
+              size="sm"
+              onClick={() => router.push('/settings')}
+            >
+              설정으로
+            </Button>
+          </div>
+        </div>
+      )}
 
       {/* 메인 콘텐츠 */}
       <main className="p-4 pb-24">
@@ -125,6 +157,7 @@ export default function MobileHomePage() {
           size="lg"
           className="w-14 h-14 rounded-full shadow-lg"
           onClick={handleNewMessage}
+          disabled={!hasFamily}
         >
           <Plus className="w-6 h-6" />
         </Button>

@@ -1,5 +1,11 @@
 @import "tailwindcss";
 
+/* Tailwind v4: 스캔에서 제외할 경로 */
+@source not "../../*.txt";
+@source not "../../.claude";
+@source not "../../supabase";
+@source not "../../public/sounds";
+
 :root {
   --background: #ffffff;
   --foreground: #171717;

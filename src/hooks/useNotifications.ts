@@ -267,10 +267,23 @@ export function useNotifications(options: NotificationOptions = {}): UseNotifica
 /**
  * 야간 모드 관리
  */
-export function useNightMode(startTime = '20:00', endTime = '06:00') {
+interface NightModeOptions {
+  startTime?: string;
+  endTime?: string;
+  enabled?: boolean;
+}
+
+export function useNightMode(options: NightModeOptions = {}) {
+  const { startTime = '20:00', endTime = '06:00', enabled = true } = options;
   const [isNightMode, setIsNightMode] = useState(false);
 
   useEffect(() => {
+    // 야간 모드가 비활성화되면 항상 false
+    if (!enabled) {
+      setIsNightMode(false);
+      return;
+    }
+
     const checkNightMode = () => {
       const now = new Date();
       const currentTime = `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
@@ -289,7 +302,7 @@ export function useNightMode(startTime = '20:00', endTime = '06:00') {
     const interval = setInterval(checkNightMode, 60000); // 1분마다 확인
 
     return () => clearInterval(interval);
-  }, [startTime, endTime]);
+  }, [startTime, endTime, enabled]);
 
   const exitNightMode = useCallback(() => {
     setIsNightMode(false);

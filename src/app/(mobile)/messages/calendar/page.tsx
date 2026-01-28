@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
-import { ChevronLeft, ChevronRight, ArrowLeft, List } from 'lucide-react';
+import { ChevronLeft, ChevronRight, ArrowLeft, List, Home } from 'lucide-react';
 import {
   format,
   startOfMonth,
@@ -20,6 +20,7 @@ import { ko } from 'date-fns/locale';
 import { Button } from '@/components/ui/button';
 import { createClient } from '@/lib/supabase/client';
 import { cn, getTodayString } from '@/lib/utils';
+import { useUser } from '@/hooks';
 
 interface MessageCount {
   display_date: string;
@@ -28,6 +29,7 @@ interface MessageCount {
 
 export default function CalendarPage() {
   const router = useRouter();
+  const { user } = useUser();
   const [currentMonth, setCurrentMonth] = useState(new Date());
   const [messageCounts, setMessageCounts] = useState<Record<string, number>>({});
   const [loading, setLoading] = useState(true);
@@ -37,7 +39,7 @@ export default function CalendarPage() {
 
   // 월별 메시지 개수 조회
   const fetchMessageCounts = useCallback(async () => {
-    if (!supabase) return;
+    if (!supabase || !user?.activeFamily?.id) return;
 
     setLoading(true);
     try {
@@ -47,6 +49,7 @@ export default function CalendarPage() {
       const { data, error } = await supabase
         .from('messages')
         .select('display_date')
+        .eq('family_id', user.activeFamily.id)
         .gte('display_date', monthStart)
         .lte('display_date', monthEnd);
 
@@ -64,7 +67,7 @@ export default function CalendarPage() {
     } finally {
       setLoading(false);
     }
-  }, [supabase, currentMonth]);
+  }, [supabase, currentMonth, user?.activeFamily?.id]);
 
   useEffect(() => {
     fetchMessageCounts();
@@ -99,16 +102,27 @@ export default function CalendarPage() {
     <div className="min-h-screen bg-gray-50">
       {/* 헤더 */}
       <header className="bg-blue-600 px-4 py-4 sticky top-0 z-10">
-        <div className="flex items-center gap-3">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <Button
+              variant="ghost"
+              size="icon"
+              className="text-white hover:bg-blue-500"
+              onClick={() => router.back()}
+            >
+              <ArrowLeft className="w-5 h-5" />
+            </Button>
+            <h1 className="text-xl font-bold text-white">{user?.activeFamily?.name || '가족'} 달력</h1>
+          </div>
           <Button
             variant="ghost"
             size="icon"
             className="text-white hover:bg-blue-500"
-            onClick={() => router.back()}
+            onClick={() => router.push('/home')}
+            title="홈으로"
           >
-            <ArrowLeft className="w-5 h-5" />
+            <Home className="w-5 h-5" />
           </Button>
-          <h1 className="text-xl font-bold text-white">메시지 달력</h1>
         </div>
       </header>
 

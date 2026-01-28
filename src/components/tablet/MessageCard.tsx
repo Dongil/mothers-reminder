@@ -1,23 +1,35 @@
 'use client';
 
 import React from 'react';
-import { Volume2, Calendar, User, Clock } from 'lucide-react';
+import { Volume2, Calendar, Clock } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { cn, formatTime, formatDday, getPriorityColor, getPriorityLabel } from '@/lib/utils';
-import type { Message, Priority } from '@/types/database';
+import type { Message, Priority, Gender } from '@/types/database';
+
+interface AuthorInfo {
+  name: string;
+  nickname: string | null;
+  gender: Gender | null;
+}
 
 interface MessageCardProps {
   message: Message;
+  author?: AuthorInfo;
   onSpeak?: (text: string) => void;
   className?: string;
   id?: string;
 }
 
-export function MessageCard({ message, onSpeak, className, id }: MessageCardProps) {
+export function MessageCard({ message, author, onSpeak, className, id }: MessageCardProps) {
   const priorityColor = getPriorityColor(message.priority as Priority);
   const priorityLabel = getPriorityLabel(message.priority as Priority);
+
+  // 작성자 표시 문자열
+  const authorDisplay = author
+    ? `${author.gender === 'male' ? '👨' : author.gender === 'female' ? '👩' : '👤'} ${author.nickname || author.name}`
+    : '가족';
 
   // 다음 알림 시간 계산
   const getNextAlarmTime = () => {
@@ -107,8 +119,7 @@ export function MessageCard({ message, onSpeak, className, id }: MessageCardProp
         {/* 하단: 작성자 + 듣기 버튼 */}
         <div className="flex items-center justify-between gap-2">
           <div className="flex items-center gap-1 md:gap-2 text-sm md:text-lg text-gray-500 min-w-0">
-            <User className="w-4 h-4 md:w-5 md:h-5 shrink-0" />
-            <span className="truncate">가족</span>
+            <span className="truncate">{authorDisplay}</span>
             <span className="mx-1 md:mx-2">•</span>
             <Calendar className="w-4 h-4 md:w-5 md:h-5 shrink-0" />
             <span className="truncate">{message.display_date}</span>

@@ -2,13 +2,16 @@
 
 import React, { useEffect, useState, useCallback, useRef } from 'react';
 import { Header, MessageCard, NightMode } from '@/components/tablet';
-import { useMessages, useNightMode, useDateRefresh } from '@/hooks';
+import { useMessages, useNightMode, useDateRefresh, useUser, useSettings } from '@/hooks';
 import { useNotifications } from '@/hooks/useNotifications';
 import { getCurrentTimeString } from '@/lib/utils';
 
 const LAST_PAGE_KEY = 'mothers-reminder-last-page';
 
 export default function DisplayPage() {
+  const { user } = useUser();
+  const { settings } = useSettings();
+
   // 오디오 활성화 상태 (브라우저 autoplay 정책 대응)
   const [audioEnabled, setAudioEnabled] = useState(false);
   const [isSpeaking, setIsSpeaking] = useState(false);
@@ -60,11 +63,16 @@ export default function DisplayPage() {
   const [today, setToday] = useState(() => new Date());
 
   const { messages, loading, refreshMessages } = useMessages({
+    familyId: user?.activeFamily?.id,
     date: today,
     realtime: true,
   });
 
-  const { isNightMode, exitNightMode: originalExitNightMode } = useNightMode('20:00', '06:00');
+  const { isNightMode, exitNightMode: originalExitNightMode } = useNightMode({
+    startTime: settings?.night_mode_start || '20:00',
+    endTime: settings?.night_mode_end || '06:00',
+    enabled: settings?.night_mode_enabled ?? true,
+  });
   const { scheduleNotifications, requestPermission } = useNotifications({
     soundEnabled: true,
     ttsEnabled: true,
@@ -138,6 +146,11 @@ export default function DisplayPage() {
     setAudioEnabled(true);
   }, []);
 
+  // 현재 볼륨 계산 (야간 모드면 야간 볼륨, 아니면 주간 볼륨)
+  const currentVolume = isNightMode
+    ? (settings?.volume_night ?? 30) / 100
+    : (settings?.volume_day ?? 80) / 100;
+
   // 메시지 읽기 - Google Cloud TTS API 사용
   const handleSpeak = useCallback(async (text: string) => {
     if (isSpeaking) return;
@@ -147,7 +160,11 @@ export default function DisplayPage() {
       const response = await fetch('/api/tts', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ text }),
+        body: JSON.stringify({
+          text,
+          voice: settings?.tts_voice || 'ko-KR-Wavenet-A',
+          speed: settings?.tts_speed || 0.9,
+        }),
       });
 
       if (!response.ok) {
@@ -160,6 +177,7 @@ export default function DisplayPage() {
 
       // base64 오디오를 재생
       const audio = new Audio(`data:audio/mp3;base64,${data.audioContent}`);
+      audio.volume = currentVolume;
       audio.onended = () => setIsSpeaking(false);
       audio.onerror = () => setIsSpeaking(false);
       await audio.play();
@@ -167,7 +185,7 @@ export default function DisplayPage() {
       console.error('TTS error:', error);
       setIsSpeaking(false);
     }
-  }, [isSpeaking]);
+  }, [isSpeaking, settings?.tts_voice, settings?.tts_speed, currentVolume]);
 
   return (
     <>
@@ -190,7 +208,7 @@ export default function DisplayPage() {
 
       <div className="min-h-screen bg-gray-50">
         {/* 헤더 */}
-        <Header familyName="우리 가족" />
+        <Header familyName={user?.activeFamily?.name || '가족'} />
 
         {/* 메시지 목록 */}
         <main className="p-4 md:p-8">
@@ -212,6 +230,11 @@ export default function DisplayPage() {
                   key={message.id}
                   id={`message-${message.id}`}
                   message={message}
+                  author={message.author ? {
+                    name: message.author.name,
+                    nickname: message.author.nickname,
+                    gender: message.author.gender,
+                  } : undefined}
                   onSpeak={handleSpeak}
                 />
               ))}
