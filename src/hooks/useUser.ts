@@ -40,32 +40,32 @@ export function useUser(): UseUserReturn {
         return;
       }
 
-      // 사용자 프로필 조회
-      const { data: userData, error: userError } = await supabase
-        .from('users')
-        .select('*')
-        .eq('id', authUser.id)
-        .single();
+      // 사용자 프로필과 활성 가족을 병렬로 조회
+      const [userResult, membershipResult] = await Promise.all([
+        supabase
+          .from('users')
+          .select('*')
+          .eq('id', authUser.id)
+          .single(),
+        supabase
+          .from('family_members')
+          .select(`
+            *,
+            family:family_id (*)
+          `)
+          .eq('user_id', authUser.id)
+          .eq('is_active', true)
+          .single(),
+      ]);
 
-      if (userError) {
+      if (userResult.error) {
         throw new Error('사용자 정보를 불러오는데 실패했습니다');
       }
 
-      // 활성 가족 조회
-      const { data: membershipData } = await supabase
-        .from('family_members')
-        .select(`
-          *,
-          family:family_id (*)
-        `)
-        .eq('user_id', authUser.id)
-        .eq('is_active', true)
-        .single();
-
-      const membership = membershipData as (FamilyMember & { family: Family }) | null;
+      const membership = membershipResult.data as (FamilyMember & { family: Family }) | null;
 
       setUser({
-        ...(userData as User),
+        ...(userResult.data as User),
         activeFamily: membership?.family || null,
         activeMembership: membership ? {
           id: membership.id,
