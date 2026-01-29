@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import { MessageSquare } from 'lucide-react';
@@ -13,7 +13,7 @@ import type { Gender } from '@/types/database';
 
 type AuthMode = 'login' | 'register';
 
-export default function LoginPage() {
+function LoginContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const [mode, setMode] = useState<AuthMode>('login');
@@ -388,5 +388,17 @@ export default function LoginPage() {
         어머니 태블릿은 /display 페이지로 접속하세요
       </p>
     </div>
+  );
+}
+
+export default function LoginPage() {
+  return (
+    <Suspense fallback={
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="text-gray-500">로딩 중...</div>
+      </div>
+    }>
+      <LoginContent />
+    </Suspense>
   );
 }
