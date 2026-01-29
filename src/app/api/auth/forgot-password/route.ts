@@ -28,7 +28,7 @@ export async function POST(request: NextRequest) {
     // 비밀번호 재설정 이메일 발송
     // auth/callback으로 리다이렉트하여 토큰 처리
     const { error } = await supabase.auth.resetPasswordForEmail(email, {
-      redirectTo: `${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}/auth/callback`,
+      redirectTo: `${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}/auth/callback?type=recovery`,
     });
 
     if (error) {
