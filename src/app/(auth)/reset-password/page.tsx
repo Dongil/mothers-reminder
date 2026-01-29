@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import { KeyRound, Eye, EyeOff, CheckCircle, ArrowLeft } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -12,6 +12,7 @@ import { validatePassword, PASSWORD_POLICY_MESSAGE } from '@/lib/auth/password-p
 
 export default function ResetPasswordPage() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const [isLoading, setIsLoading] = useState(false);
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
@@ -22,20 +23,39 @@ export default function ResetPasswordPage() {
 
   const supabase = createClient();
 
-  // 세션 유효성 확인
+  // URL에서 토큰 확인 및 세션 설정
   useEffect(() => {
-    const checkSession = async () => {
+    const setupSession = async () => {
       if (!supabase) {
         setIsSessionValid(false);
         return;
       }
 
+      // URL 파라미터에서 access_token 확인
+      const accessToken = searchParams.get('access_token');
+      const refreshToken = searchParams.get('refresh_token');
+
+      if (accessToken) {
+        // 토큰으로 세션 설정
+        const { error } = await supabase.auth.setSession({
+          access_token: accessToken,
+          refresh_token: refreshToken || '',
+        });
+
+        if (error) {
+          console.error('Session setup error:', error);
+          setIsSessionValid(false);
+          return;
+        }
+      }
+
+      // 세션 유효성 확인
       const { data: { user } } = await supabase.auth.getUser();
       setIsSessionValid(!!user);
     };
 
-    checkSession();
-  }, [supabase]);
+    setupSession();
+  }, [supabase, searchParams]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();

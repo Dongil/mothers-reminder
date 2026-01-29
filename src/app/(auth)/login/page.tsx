@@ -1,7 +1,7 @@
 'use client';
 
-import React, { useState } from 'react';
-import { useRouter } from 'next/navigation';
+import React, { useState, useEffect } from 'react';
+import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import { MessageSquare } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -15,6 +15,7 @@ type AuthMode = 'login' | 'register';
 
 export default function LoginPage() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const [mode, setMode] = useState<AuthMode>('login');
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
@@ -29,6 +30,31 @@ export default function LoginPage() {
   const [phone, setPhone] = useState('');
 
   const supabase = createClient();
+
+  // Supabase 비밀번호 재설정 링크 감지 및 리다이렉트
+  useEffect(() => {
+    // URL 해시에서 토큰 확인 (Supabase가 #access_token=...&type=recovery 형식으로 보냄)
+    const hash = window.location.hash;
+    if (hash && hash.includes('type=recovery')) {
+      // 해시를 쿼리 파라미터로 변환하여 reset-password로 리다이렉트
+      const hashParams = new URLSearchParams(hash.substring(1));
+      const accessToken = hashParams.get('access_token');
+      const refreshToken = hashParams.get('refresh_token');
+
+      if (accessToken) {
+        // 토큰으로 세션 설정 후 비밀번호 변경 페이지로 이동
+        router.push(`/reset-password?access_token=${accessToken}&refresh_token=${refreshToken || ''}`);
+        return;
+      }
+    }
+
+    // 쿼리 파라미터에서 확인 (일부 Supabase 설정에서 사용)
+    const type = searchParams.get('type');
+    const tokenHash = searchParams.get('token_hash');
+    if (type === 'recovery' && tokenHash) {
+      router.push(`/reset-password?token_hash=${tokenHash}&type=recovery`);
+    }
+  }, [router, searchParams]);
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
