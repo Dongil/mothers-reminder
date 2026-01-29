@@ -50,7 +50,9 @@ export function AccountManagementSection() {
 
       // 로그아웃 처리
       const supabase = createClient();
-      await supabase.auth.signOut();
+      if (supabase) {
+        await supabase.auth.signOut();
+      }
 
       // 로그인 페이지로 이동
       router.push('/login?message=account_deleted');
@@ -89,7 +91,9 @@ export function AccountManagementSection() {
 
   const handleLogout = async () => {
     const supabase = createClient();
-    await supabase.auth.signOut();
+    if (supabase) {
+      await supabase.auth.signOut();
+    }
     router.push('/login');
   };
 
