@@ -1,14 +1,20 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { createClient } from '@/lib/supabase/server';
+import { logTtsUsage } from '@/lib/logging/audit';
 
 /**
  * Google Cloud Text-to-Speech API를 사용한 TTS 엔드포인트
  * POST /api/tts
- * Body: { text: string, voice?: string, speed?: number }
+ * Body: { text: string, voice?: string, speed?: number, messageId?: string, familyId?: string }
  * Response: { audioContent: string (base64) }
  */
 export async function POST(request: NextRequest) {
   try {
-    const { text, voice, speed } = await request.json();
+    const { text, voice, speed, messageId, familyId } = await request.json();
+
+    // 사용자 인증 확인 (로깅용)
+    const supabase = await createClient();
+    const { data: { user } } = await supabase.auth.getUser();
 
     if (!text || typeof text !== 'string') {
       return NextResponse.json(
@@ -73,6 +79,25 @@ export async function POST(request: NextRequest) {
     }
 
     const data = await response.json();
+
+    // TTS 사용 로그 기록 (비동기, 응답 지연 없음)
+    if (user) {
+      const audioSizeBytes = data.audioContent
+        ? Math.ceil((data.audioContent.length * 3) / 4) // Base64 -> 실제 크기 추정
+        : undefined;
+
+      logTtsUsage({
+        userId: user.id,
+        textLength: text.length,
+        voice: voiceName,
+        speed: speakingRate,
+        familyId: familyId || undefined,
+        messageId: messageId || undefined,
+        textPreview: text.substring(0, 100),
+        audioSizeBytes,
+        status: 'success',
+      }).catch(console.error); // 로깅 실패해도 응답에 영향 없음
+    }
 
     return NextResponse.json({
       audioContent: data.audioContent,

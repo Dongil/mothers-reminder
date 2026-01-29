@@ -2,11 +2,13 @@
 
 import React, { useState } from 'react';
 import { useRouter } from 'next/navigation';
+import Link from 'next/link';
 import { MessageSquare } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { createClient } from '@/lib/supabase/client';
+import { validatePassword, PASSWORD_POLICY_MESSAGE } from '@/lib/auth/password-policy';
 import type { Gender } from '@/types/database';
 
 type AuthMode = 'login' | 'register';
@@ -16,6 +18,7 @@ export default function LoginPage() {
   const [mode, setMode] = useState<AuthMode>('login');
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
+  const [remainingAttempts, setRemainingAttempts] = useState<number | null>(null);
 
   // 폼 상태
   const [email, setEmail] = useState('');
@@ -23,6 +26,7 @@ export default function LoginPage() {
   const [name, setName] = useState('');
   const [nickname, setNickname] = useState('');
   const [gender, setGender] = useState<Gender | ''>('');
+  const [phone, setPhone] = useState('');
 
   const supabase = createClient();
 
@@ -34,8 +38,26 @@ export default function LoginPage() {
     }
     setIsLoading(true);
     setError('');
+    setRemainingAttempts(null);
 
     try {
+      // 로그인 시도 제한이 포함된 API 호출
+      const response = await fetch('/api/auth/login', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email, password }),
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        if (data.remainingAttempts !== undefined) {
+          setRemainingAttempts(data.remainingAttempts);
+        }
+        throw new Error(data.error || '로그인에 실패했습니다');
+      }
+
+      // Supabase 클라이언트 세션 설정 (API에서 이미 인증됨)
       const { error: authError } = await supabase.auth.signInWithPassword({
         email,
         password,
@@ -43,6 +65,12 @@ export default function LoginPage() {
 
       if (authError) {
         throw authError;
+      }
+
+      // 이메일 미인증 시 인증 페이지로 이동
+      if (!data.user.emailConfirmed) {
+        router.push('/verify-email');
+        return;
       }
 
       router.push('/home');
@@ -63,6 +91,13 @@ export default function LoginPage() {
     // 성별 필수 체크
     if (!gender) {
       setError('성별을 선택해주세요');
+      return;
+    }
+
+    // 비밀번호 정책 검증
+    const passwordValidation = validatePassword(password);
+    if (!passwordValidation.valid) {
+      setError(passwordValidation.errors.join('\n'));
       return;
     }
 
@@ -90,6 +125,7 @@ export default function LoginPage() {
             name,
             nickname: nickname || name, // 닉네임 미입력시 이름 사용
             gender,
+            phone: phone || null, // 전화번호 (이메일 찾기용)
             family_id: null, // 가족 없이 가입
             role: 'member',
           } as never);
@@ -100,7 +136,8 @@ export default function LoginPage() {
         }
       }
 
-      router.push('/home');
+      // 이메일 인증 페이지로 이동
+      router.push('/verify-email');
     } catch (err) {
       setError(err instanceof Error ? err.message : '회원가입에 실패했습니다');
     } finally {
@@ -188,6 +225,17 @@ export default function LoginPage() {
             >
               {isLoading ? '로그인 중...' : '로그인'}
             </Button>
+
+            {/* 비밀번호 찾기 / 이메일 찾기 링크 */}
+            <div className="flex justify-center gap-4 text-sm">
+              <Link href="/forgot-password" className="text-blue-600 hover:underline">
+                비밀번호 찾기
+              </Link>
+              <span className="text-gray-300">|</span>
+              <Link href="/find-email" className="text-blue-600 hover:underline">
+                이메일 찾기
+              </Link>
+            </div>
           </form>
         )}
 
@@ -263,16 +311,33 @@ export default function LoginPage() {
             </div>
 
             <div className="space-y-2">
+              <Label htmlFor="registerPhone">전화번호 (선택)</Label>
+              <Input
+                id="registerPhone"
+                type="tel"
+                placeholder="010-0000-0000"
+                value={phone}
+                onChange={(e) => setPhone(e.target.value)}
+              />
+              <p className="text-xs text-gray-500">
+                이메일 분실 시 찾기에 사용됩니다
+              </p>
+            </div>
+
+            <div className="space-y-2">
               <Label htmlFor="registerPassword">비밀번호</Label>
               <Input
                 id="registerPassword"
                 type="password"
-                placeholder="6자 이상"
+                placeholder="8자 이상, 영문+숫자"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 required
-                minLength={6}
+                minLength={8}
               />
+              <p className="text-xs text-gray-500">
+                {PASSWORD_POLICY_MESSAGE}
+              </p>
             </div>
 
             <Button

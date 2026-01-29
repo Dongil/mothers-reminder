@@ -4,7 +4,7 @@
 
 **시작일**: 2026년 1월 13일
 **목표**: MVP 완성
-**현재 상태**: v1.4 다중 가족 지원 완료 (2026년 1월 28일)
+**현재 상태**: v1.5 인증 개선 및 시스템 관리자 대시보드 (2026년 1월 29일)
 
 ---
 
@@ -341,9 +341,76 @@
 
 ---
 
+## v1.5: 인증 개선 및 시스템 관리자 대시보드 ✅ (2026년 1월 29일)
+
+### DB 스키마 변경
+- [x] `system_admins` 테이블 - 시스템 관리자 권한 관리
+- [x] `login_attempts` 테이블 - 로그인 시도 기록 및 제한
+- [x] `audit_logs` 테이블 - 관리자 행동 기록
+- [x] `user_activity_logs` 테이블 - 사용자 활동 추적
+- [x] `tts_usage_logs` 테이블 - TTS 사용량 추적
+- [x] `daily_stats` 테이블 - 일별 통계 집계
+- [x] `users` 테이블에 `deleted_at`, `deletion_requested_at` 필드 추가
+- [x] 마이그레이션 파일 8개 작성 (`v1.5_001` ~ `v1.5_008`)
+
+### 인증 개선
+- [x] 비밀번호 정책 적용 (8자 이상, 영문+숫자 필수)
+- [x] 로그인 시도 제한 (5회 실패 시 10분 잠금)
+- [x] 비밀번호 찾기 페이지 (`/forgot-password`)
+- [x] 비밀번호 재설정 페이지 (`/reset-password`)
+- [x] 이메일 찾기 페이지 (`/find-email`) - 전화번호로 조회
+- [x] 이메일 인증 안내 페이지 (`/verify-email`)
+
+### 회원 탈퇴 기능
+- [x] 소프트 삭제 방식 (30일 유예 기간)
+- [x] 설정 페이지에 계정 관리 섹션 추가
+- [x] 회원 탈퇴 확인 다이얼로그
+- [x] 탈퇴 취소 기능 (유예 기간 내)
+
+### 시스템 관리자 대시보드 (`/admin/*`)
+- [x] 관리자 레이아웃 및 사이드바 네비게이션
+- [x] 미들웨어 관리자 권한 체크
+- [x] `/admin/dashboard` - 통계 개요 (사용자, 가족, 메시지, TTS)
+- [x] `/admin/users` - 사용자 관리 (목록, 삭제된 계정 포함)
+- [x] `/admin/families` - 가족 관리
+- [x] `/admin/statistics` - TTS 통계 상세
+- [x] `/admin/system` - 시스템 상태 모니터링
+- [x] `/admin/audit-logs` - 감사 로그 조회
+
+### API 라우트 추가
+- [x] `/api/auth/login` - 로그인 (시도 제한 포함)
+- [x] `/api/auth/account` - 회원 탈퇴/취소/상태 조회
+- [x] `/api/auth/forgot-password` - 비밀번호 재설정 요청
+- [x] `/api/auth/reset-password` - 비밀번호 재설정
+- [x] `/api/auth/find-email` - 이메일 찾기
+- [x] `/api/auth/verify-email` - 인증 이메일 재발송
+- [x] `/api/admin/stats/overview` - 대시보드 통계
+- [x] `/api/admin/stats/users` - 사용자별 통계
+- [x] `/api/admin/stats/families` - 가족별 통계
+- [x] `/api/admin/stats/tts` - TTS 통계
+- [x] `/api/admin/users` - 사용자 목록
+- [x] `/api/admin/families` - 가족 목록
+- [x] `/api/admin/audit-logs` - 감사 로그
+- [x] `/api/admin/system/health` - 시스템 상태
+
+### 로깅 인프라
+- [x] `src/lib/logging/audit.ts` - 감사/활동/TTS 로깅 유틸리티
+- [x] TTS API에 사용량 로깅 추가
+- [x] `src/lib/auth/rate-limit.ts` - 로그인 시도 제한 유틸리티
+- [x] `src/lib/auth/password-policy.ts` - 비밀번호 정책 검증
+
+### UI 컴포넌트 추가
+- [x] `src/components/ui/dialog.tsx` - 커스텀 다이얼로그
+- [x] `src/components/settings/AccountManagementSection.tsx` - 계정 관리
+
+### 버그 수정
+- [x] 설정 페이지 router.push 렌더링 중 호출 오류 수정
+
+---
+
 ## 향후 로드맵 (MVP 이후)
 
-### v1.5 - (예약됨)
+### v1.6 - (예약됨)
 - [ ] 추가 업데이트 예정
 
 ### v2.0 - 추가 기능
@@ -380,5 +447,5 @@
 ---
 
 **작성일**: 2026년 1월 13일
-**최종 업데이트**: 2026년 1월 28일
-**버전**: 1.4 (다중 가족 지원 및 설정 페이지)
+**최종 업데이트**: 2026년 1월 29일
+**버전**: 1.5 (인증 개선 및 시스템 관리자 대시보드)

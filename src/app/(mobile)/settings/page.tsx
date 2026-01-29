@@ -8,6 +8,7 @@ import { useUser } from '@/hooks';
 import { FamilyManagementSection } from '@/components/settings/FamilyManagementSection';
 import { TTSSettingsSection } from '@/components/settings/TTSSettingsSection';
 import { DisplaySettingsSection } from '@/components/settings/DisplaySettingsSection';
+import { AccountManagementSection } from '@/components/settings/AccountManagementSection';
 
 const LAST_PAGE_KEY = 'mothers-reminder-last-page';
 
@@ -20,6 +21,13 @@ export default function SettingsPage() {
     localStorage.setItem(LAST_PAGE_KEY, '/settings');
   }, []);
 
+  // 비로그인 시 로그인 페이지로 리다이렉트
+  useEffect(() => {
+    if (!loading && !user) {
+      router.push('/login');
+    }
+  }, [loading, user, router]);
+
   if (loading) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
@@ -29,8 +37,11 @@ export default function SettingsPage() {
   }
 
   if (!user) {
-    router.push('/login');
-    return null;
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="text-gray-500">로그인 페이지로 이동 중...</div>
+      </div>
+    );
   }
 
   return (
@@ -73,6 +84,9 @@ export default function SettingsPage() {
 
         {/* 디스플레이 설정 */}
         <DisplaySettingsSection />
+
+        {/* 계정 관리 */}
+        <AccountManagementSection />
       </main>
     </div>
   );
