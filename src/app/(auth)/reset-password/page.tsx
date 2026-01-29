@@ -31,12 +31,14 @@ function ResetPasswordContent() {
         return;
       }
 
-      // URL 파라미터에서 access_token 확인
+      // URL 파라미터에서 토큰 확인
       const accessToken = searchParams.get('access_token');
       const refreshToken = searchParams.get('refresh_token');
+      const tokenHash = searchParams.get('token_hash');
+      const type = searchParams.get('type');
 
+      // access_token이 있으면 세션 설정
       if (accessToken) {
-        // 토큰으로 세션 설정
         const { error } = await supabase.auth.setSession({
           access_token: accessToken,
           refresh_token: refreshToken || '',
@@ -44,6 +46,20 @@ function ResetPasswordContent() {
 
         if (error) {
           console.error('Session setup error:', error);
+          setIsSessionValid(false);
+          return;
+        }
+      }
+
+      // token_hash가 있으면 OTP 검증
+      if (tokenHash && type === 'recovery') {
+        const { error } = await supabase.auth.verifyOtp({
+          token_hash: tokenHash,
+          type: 'recovery',
+        });
+
+        if (error) {
+          console.error('OTP verification error:', error);
           setIsSessionValid(false);
           return;
         }
