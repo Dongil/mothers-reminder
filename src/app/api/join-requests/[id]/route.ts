@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
+import { sendPushToUser } from '@/lib/push/send-notification';
 
 interface RouteParams {
   params: Promise<{ id: string }>;
@@ -102,6 +103,29 @@ export async function PATCH(request: NextRequest, { params }: RouteParams) {
         console.error('Member add error:', memberError);
         // 요청 상태는 이미 업데이트됐으므로 에러 반환하지 않음
       }
+
+      // 요청자에게 수락 푸시 알림 발송
+      sendPushToUser(joinRequest.user_id, {
+        title: '참여 요청 수락됨',
+        body: `${joinRequest.family.name} 가족 참여 요청이 수락되었습니다. 설정에서 활성 가족으로 설정하세요.`,
+        tag: `join-accepted-${id}`,
+        data: {
+          url: '/settings',
+          type: 'join_accepted',
+          familyId: joinRequest.family_id,
+        },
+      }).catch(err => console.error('Push notification error:', err));
+    } else if (body.status === 'rejected') {
+      // 요청자에게 거절 푸시 알림 발송
+      sendPushToUser(joinRequest.user_id, {
+        title: '참여 요청 거절됨',
+        body: `${joinRequest.family.name} 가족 참여 요청이 거절되어서 참여 요청이 삭제되었습니다.`,
+        tag: `join-rejected-${id}`,
+        data: {
+          url: '/settings',
+          type: 'join_rejected',
+        },
+      }).catch(err => console.error('Push notification error:', err));
     }
 
     return NextResponse.json({ data });

@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
+import { sendPushToFamilyAdmins } from '@/lib/push/send-notification';
 
 // GET: 참여 요청 목록 조회
 export async function GET(request: NextRequest) {
@@ -175,6 +176,36 @@ export async function POST(request: NextRequest) {
         { error: '참여 요청 생성에 실패했습니다' },
         { status: 500 }
       );
+    }
+
+    // 요청자 정보 조회
+    const { data: requesterData } = await supabase
+      .from('users')
+      .select('name, nickname')
+      .eq('id', user.id)
+      .single();
+
+    const requester = requesterData as { name: string; nickname: string | null } | null;
+
+    // 가족 관리자들에게 푸시 알림 발송
+    if (requester && data) {
+      const requesterName = requester.nickname
+        ? `${requester.name}(${requester.nickname})`
+        : requester.name;
+
+      const joinRequestData = data as { id: string; family?: { name: string } };
+      const familyName = joinRequestData.family?.name || '가족';
+
+      sendPushToFamilyAdmins(body.family_id, {
+        title: '가족 참여 요청',
+        body: `${requesterName}님이 ${familyName} 가족으로 참여 요청이 왔습니다. 설정에서 확인해주세요.`,
+        tag: `join-request-${joinRequestData.id}`,
+        data: {
+          url: '/settings',
+          type: 'join_request',
+          requestId: joinRequestData.id,
+        },
+      }).catch(err => console.error('Push notification error:', err));
     }
 
     return NextResponse.json({ data }, { status: 201 });

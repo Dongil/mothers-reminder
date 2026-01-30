@@ -423,19 +423,27 @@ export function FamilyManagementSection() {
             <div className="space-y-2">
               <Label className="text-sm text-gray-600">받은 참여 요청</Label>
               {receivedRequests.map((request) => (
-                <div key={request.id} className="p-3 border border-yellow-200 bg-yellow-50 rounded-lg">
+                <div key={request.id} className="p-3 border-2 border-amber-400 bg-amber-50 rounded-lg">
                   <div className="flex items-center justify-between">
-                    <div>
-                      <div className="font-medium">
+                    <div className="flex-1 min-w-0">
+                      <div className="font-semibold text-gray-900">
                         {request.user?.gender === 'male' ? '👨' : '👩'}{' '}
-                        {request.user?.nickname || request.user?.name}
+                        <span className="text-amber-900">
+                          {request.user?.name}
+                          {request.user?.nickname && (
+                            <span className="text-amber-700 ml-1">({request.user.nickname})</span>
+                          )}
+                        </span>
                       </div>
-                      <div className="text-sm text-gray-500">{request.family?.name}</div>
+                      <div className="text-sm text-gray-600 mt-0.5">
+                        → {request.family?.name} 가족 참여 요청
+                      </div>
                     </div>
-                    <div className="flex gap-2">
+                    <div className="flex gap-2 flex-shrink-0 ml-2">
                       <Button
                         variant="primary"
                         size="sm"
+                        className="bg-green-600 hover:bg-green-700"
                         onClick={() => acceptRequest(request.id)}
                         disabled={isLoading}
                       >
@@ -444,6 +452,7 @@ export function FamilyManagementSection() {
                       <Button
                         variant="ghost"
                         size="sm"
+                        className="text-red-600 hover:bg-red-50"
                         onClick={() => rejectRequest(request.id)}
                         disabled={isLoading}
                       >

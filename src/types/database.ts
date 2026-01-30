@@ -522,6 +522,39 @@ export type Database = {
           updated_at?: string;
         };
       };
+      // v1.5.2 Push Subscriptions
+      push_subscriptions: {
+        Row: {
+          id: string;
+          user_id: string;
+          endpoint: string;
+          p256dh: string;
+          auth: string;
+          user_agent: string | null;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          user_id: string;
+          endpoint: string;
+          p256dh: string;
+          auth: string;
+          user_agent?: string | null;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: {
+          id?: string;
+          user_id?: string;
+          endpoint?: string;
+          p256dh?: string;
+          auth?: string;
+          user_agent?: string | null;
+          created_at?: string;
+          updated_at?: string;
+        };
+      };
     };
     Views: {
       [_ in never]: never;
@@ -677,6 +710,11 @@ export type TtsUsageLogUpdate = Database['public']['Tables']['tts_usage_logs']['
 export type DailyStat = Database['public']['Tables']['daily_stats']['Row'];
 export type DailyStatInsert = Database['public']['Tables']['daily_stats']['Insert'];
 export type DailyStatUpdate = Database['public']['Tables']['daily_stats']['Update'];
+
+// v1.5.2 Push Subscriptions 타입 별칭
+export type PushSubscription = Database['public']['Tables']['push_subscriptions']['Row'];
+export type PushSubscriptionInsert = Database['public']['Tables']['push_subscriptions']['Insert'];
+export type PushSubscriptionUpdate = Database['public']['Tables']['push_subscriptions']['Update'];
 
 // 시스템 관리자 권한 타입
 export type AdminPermission = 'read' | 'write' | 'super';
