@@ -2,7 +2,7 @@
 
 import React, { useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { Trash2, AlertTriangle, Loader2, Undo2, LogOut } from 'lucide-react';
+import { Trash2, AlertTriangle, Loader2, Undo2, LogOut, Key } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import {
   Dialog,
@@ -16,6 +16,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { createClient } from '@/lib/supabase/client';
 import { useUser } from '@/hooks';
+import { validatePassword, PASSWORD_POLICY_MESSAGE } from '@/lib/auth/password-policy';
 
 export function AccountManagementSection() {
   const router = useRouter();
@@ -25,6 +26,15 @@ export function AccountManagementSection() {
   const [isDeleting, setIsDeleting] = useState(false);
   const [isCanceling, setIsCanceling] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  // 비밀번호 변경 상태
+  const [isPasswordDialogOpen, setIsPasswordDialogOpen] = useState(false);
+  const [currentPassword, setCurrentPassword] = useState('');
+  const [newPassword, setNewPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
+  const [isChangingPassword, setIsChangingPassword] = useState(false);
+  const [passwordError, setPasswordError] = useState<string | null>(null);
+  const [passwordSuccess, setPasswordSuccess] = useState(false);
 
   const isDeletionPending = !!user?.deletion_requested_at && !user?.deleted_at;
 
@@ -97,6 +107,62 @@ export function AccountManagementSection() {
     router.push('/login');
   };
 
+  const resetPasswordForm = () => {
+    setCurrentPassword('');
+    setNewPassword('');
+    setConfirmPassword('');
+    setPasswordError(null);
+    setPasswordSuccess(false);
+  };
+
+  const handleChangePassword = async () => {
+    setPasswordError(null);
+    setPasswordSuccess(false);
+
+    // 새 비밀번호 확인 일치 검증
+    if (newPassword !== confirmPassword) {
+      setPasswordError('새 비밀번호가 일치하지 않습니다');
+      return;
+    }
+
+    // 비밀번호 정책 검증
+    const validation = validatePassword(newPassword);
+    if (!validation.valid) {
+      setPasswordError(validation.errors.join('\n'));
+      return;
+    }
+
+    setIsChangingPassword(true);
+
+    try {
+      const res = await fetch('/api/auth/change-password', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          currentPassword,
+          newPassword,
+        }),
+      });
+
+      const data = await res.json();
+
+      if (!res.ok) {
+        throw new Error(data.error || '비밀번호 변경에 실패했습니다');
+      }
+
+      setPasswordSuccess(true);
+      // 2초 후 다이얼로그 닫기
+      setTimeout(() => {
+        setIsPasswordDialogOpen(false);
+        resetPasswordForm();
+      }, 2000);
+    } catch (err) {
+      setPasswordError(err instanceof Error ? err.message : '오류가 발생했습니다');
+    } finally {
+      setIsChangingPassword(false);
+    }
+  };
+
   // 삭제 예정일 계산 (요청일 + 30일)
   const getDeletionDate = () => {
     if (!user?.deletion_requested_at) return null;
@@ -148,6 +214,16 @@ export function AccountManagementSection() {
       )}
 
       <div className="p-4 space-y-3">
+        {/* 비밀번호 변경 */}
+        <Button
+          variant="outline"
+          className="w-full justify-start text-gray-700"
+          onClick={() => setIsPasswordDialogOpen(true)}
+        >
+          <Key className="w-4 h-4 mr-2" />
+          비밀번호 변경
+        </Button>
+
         {/* 로그아웃 */}
         <Button
           variant="outline"
@@ -239,6 +315,102 @@ export function AccountManagementSection() {
               )}
             </Button>
           </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* 비밀번호 변경 다이얼로그 */}
+      <Dialog open={isPasswordDialogOpen} onOpenChange={(open) => {
+        setIsPasswordDialogOpen(open);
+        if (!open) resetPasswordForm();
+      }}>
+        <DialogContent className="sm:max-w-md" onClose={() => {
+          setIsPasswordDialogOpen(false);
+          resetPasswordForm();
+        }}>
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Key className="w-5 h-5" />
+              비밀번호 변경
+            </DialogTitle>
+            <DialogDescription>
+              {PASSWORD_POLICY_MESSAGE}
+            </DialogDescription>
+          </DialogHeader>
+
+          {passwordSuccess ? (
+            <div className="py-6 text-center">
+              <div className="text-green-600 font-medium">
+                비밀번호가 성공적으로 변경되었습니다
+              </div>
+            </div>
+          ) : (
+            <div className="space-y-4 py-4">
+              <div className="space-y-2">
+                <Label htmlFor="currentPassword">현재 비밀번호</Label>
+                <Input
+                  id="currentPassword"
+                  type="password"
+                  value={currentPassword}
+                  onChange={(e) => setCurrentPassword(e.target.value)}
+                  placeholder="현재 비밀번호 입력"
+                />
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="newPassword">새 비밀번호</Label>
+                <Input
+                  id="newPassword"
+                  type="password"
+                  value={newPassword}
+                  onChange={(e) => setNewPassword(e.target.value)}
+                  placeholder="8자 이상, 영문+숫자"
+                />
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="confirmPassword">새 비밀번호 확인</Label>
+                <Input
+                  id="confirmPassword"
+                  type="password"
+                  value={confirmPassword}
+                  onChange={(e) => setConfirmPassword(e.target.value)}
+                  placeholder="새 비밀번호 다시 입력"
+                />
+              </div>
+
+              {passwordError && (
+                <p className="text-sm text-red-600 whitespace-pre-line">{passwordError}</p>
+              )}
+            </div>
+          )}
+
+          {!passwordSuccess && (
+            <DialogFooter className="flex gap-2 sm:gap-0">
+              <Button
+                variant="outline"
+                onClick={() => {
+                  setIsPasswordDialogOpen(false);
+                  resetPasswordForm();
+                }}
+              >
+                취소
+              </Button>
+              <Button
+                variant="primary"
+                onClick={handleChangePassword}
+                disabled={isChangingPassword || !currentPassword || !newPassword || !confirmPassword}
+              >
+                {isChangingPassword ? (
+                  <>
+                    <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                    변경 중...
+                  </>
+                ) : (
+                  '변경하기'
+                )}
+              </Button>
+            </DialogFooter>
+          )}
         </DialogContent>
       </Dialog>
     </section>

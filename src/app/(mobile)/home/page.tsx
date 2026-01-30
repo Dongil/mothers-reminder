@@ -2,18 +2,16 @@
 
 import React, { useMemo, useEffect, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
-import { Plus, MessageSquare, Monitor, LogOut, Calendar, Settings, Users } from 'lucide-react';
+import { Plus, MessageSquare, Monitor, Calendar, Settings, Users } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { MessageList } from '@/components/mobile';
 import { useMessages, useDateRefresh, useUser } from '@/hooks';
-import { createClient } from '@/lib/supabase/client';
 import type { Message } from '@/types/database';
 
 const LAST_PAGE_KEY = 'mothers-reminder-last-page';
 
 export default function MobileHomePage() {
   const router = useRouter();
-  const supabase = createClient();
   const { user, hasFamily, loading: userLoading } = useUser();
 
   // 마지막 방문 페이지 저장
@@ -43,12 +41,6 @@ export default function MobileHomePage() {
       return;
     }
     router.push('/messages/new');
-  };
-
-  const handleLogout = async () => {
-    if (!supabase) return;
-    await supabase.auth.signOut();
-    router.push('/login');
   };
 
   const handleEdit = (message: Message) => {
@@ -100,9 +92,6 @@ export default function MobileHomePage() {
               title="설정"
             >
               <Settings className="w-5 h-5" />
-            </Button>
-            <Button variant="ghost" size="icon" className="text-white hover:bg-blue-500" onClick={handleLogout}>
-              <LogOut className="w-5 h-5" />
             </Button>
           </div>
         </div>

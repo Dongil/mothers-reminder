@@ -132,6 +132,14 @@ export function useMessages(options: UseMessagesOptions = {}): UseMessagesReturn
       setLoading(false);
       return;
     }
+
+    // familyId가 없으면 빈 배열 반환 (가족 미참여 사용자 - 프라이버시 보호)
+    if (!familyId) {
+      setRawMessages([]);
+      setLoading(false);
+      return;
+    }
+
     try {
       setLoading(true);
       setError(null);
