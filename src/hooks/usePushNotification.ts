@@ -71,32 +71,38 @@ export function usePushNotification(): UsePushNotificationReturn {
       console.log('[Push] Permission:', Notification.permission);
 
       try {
-        // Service Worker 등록 확인
-        const registrations = await navigator.serviceWorker.getRegistrations();
-        console.log('[Push] SW registrations:', registrations.length);
+        // Service Worker가 준비될 때까지 대기 (최대 10초)
+        console.log('[Push] Waiting for SW ready...');
+        const registration = await Promise.race([
+          navigator.serviceWorker.ready,
+          new Promise<null>((_, reject) =>
+            setTimeout(() => reject(new Error('SW ready timeout')), 10000)
+          )
+        ]);
 
-        if (registrations.length === 0) {
-          setError('Service Worker가 등록되지 않음');
+        if (!registration) {
+          setError('Service Worker 준비 시간 초과');
           setLoading(false);
           return;
         }
 
-        // 현재 구독 상태 확인
-        const registration = await navigator.serviceWorker.ready;
         console.log('[Push] SW ready:', registration.scope);
 
         const subscription = await registration.pushManager.getSubscription();
         console.log('[Push] Existing subscription:', !!subscription);
         setIsSubscribed(!!subscription);
+        setError(null);
       } catch (err) {
         console.error('[Push] Failed to check subscription:', err);
-        setError(`구독 확인 실패: ${err instanceof Error ? err.message : String(err)}`);
+        setError(`SW 준비 실패: ${err instanceof Error ? err.message : String(err)}`);
       }
 
       setLoading(false);
     };
 
-    checkSupport();
+    // 약간의 지연 후 체크 (SW 등록 시간 확보)
+    const timer = setTimeout(checkSupport, 1000);
+    return () => clearTimeout(timer);
   }, []);
 
   // 푸시 구독
