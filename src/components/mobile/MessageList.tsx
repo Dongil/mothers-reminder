@@ -1,23 +1,26 @@
 'use client';
 
 import React from 'react';
-import { Edit2, Trash2, Volume2, Calendar, Clock } from 'lucide-react';
+import { Edit2, Trash2, Volume2, Calendar } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { cn, getPriorityColor, getPriorityLabel, formatDday } from '@/lib/utils';
-import type { Message, Priority } from '@/types/database';
+import type { MessageWithAuthor } from '@/hooks/useMessages';
+import type { Priority } from '@/types/database';
 
 interface MessageListProps {
-  messages: Message[];
-  onEdit?: (message: Message) => void;
-  onDelete?: (message: Message) => void;
+  messages: MessageWithAuthor[];
+  currentUserId?: string;
+  onEdit?: (message: MessageWithAuthor) => void;
+  onDelete?: (message: MessageWithAuthor) => void;
   loading?: boolean;
   emptyMessage?: string;
 }
 
 export function MessageList({
   messages,
+  currentUserId,
   onEdit,
   onDelete,
   loading,
@@ -53,6 +56,7 @@ export function MessageList({
         <MessageListItem
           key={message.id}
           message={message}
+          currentUserId={currentUserId}
           onEdit={onEdit}
           onDelete={onDelete}
         />
@@ -62,21 +66,23 @@ export function MessageList({
 }
 
 interface MessageListItemProps {
-  message: Message;
-  onEdit?: (message: Message) => void;
-  onDelete?: (message: Message) => void;
+  message: MessageWithAuthor;
+  currentUserId?: string;
+  onEdit?: (message: MessageWithAuthor) => void;
+  onDelete?: (message: MessageWithAuthor) => void;
 }
 
-function MessageListItem({ message, onEdit, onDelete }: MessageListItemProps) {
+function MessageListItem({ message, currentUserId, onEdit, onDelete }: MessageListItemProps) {
   const priorityColor = getPriorityColor(message.priority as Priority);
   const priorityLabel = getPriorityLabel(message.priority as Priority);
+  const isAuthor = currentUserId && message.author_id === currentUserId;
 
   const handleEdit = () => {
-    if (onEdit) onEdit(message);
+    if (onEdit && isAuthor) onEdit(message);
   };
 
   const handleDelete = () => {
-    if (onDelete) {
+    if (onDelete && isAuthor) {
       if (window.confirm('이 메시지를 삭제하시겠습니까?')) {
         onDelete(message);
       }
@@ -99,6 +105,9 @@ function MessageListItem({ message, onEdit, onDelete }: MessageListItemProps) {
             <Badge variant="outline" size="sm" className="gap-1">
               <Volume2 className="w-3 h-3" />
               음성
+              {message.tts_times && message.tts_times.length > 0 && (
+                <span className="ml-1">{message.tts_times.length}회</span>
+              )}
             </Badge>
           )}
 
@@ -114,20 +123,21 @@ function MessageListItem({ message, onEdit, onDelete }: MessageListItemProps) {
           {message.content}
         </p>
 
-        {/* 하단: 날짜 + 알림 시간 + 액션 버튼 */}
+        {/* 하단: 작성자 + 날짜 + 액션 버튼 */}
         <div className="flex items-center justify-between">
-          <div className="flex items-center gap-4 text-sm text-gray-500">
+          <div className="flex items-center gap-3 text-sm text-gray-500">
+            {/* 작성자 정보 */}
+            <span className="flex items-center gap-1">
+              {message.author?.gender === 'male' ? '👨' :
+               message.author?.gender === 'female' ? '👩' : '👤'}
+              {message.author?.nickname || message.author?.name || '가족'}
+            </span>
+
+            {/* 표시 날짜 */}
             <span className="flex items-center gap-1">
               <Calendar className="w-4 h-4" />
               {message.display_date}
             </span>
-
-            {message.tts_times && message.tts_times.length > 0 && (
-              <span className="flex items-center gap-1">
-                <Clock className="w-4 h-4" />
-                {message.tts_times.length}회
-              </span>
-            )}
           </div>
 
           <div className="flex items-center gap-2">
@@ -136,7 +146,11 @@ function MessageListItem({ message, onEdit, onDelete }: MessageListItemProps) {
                 variant="ghost"
                 size="sm"
                 onClick={handleEdit}
-                className="text-gray-500 hover:text-blue-600"
+                disabled={!isAuthor}
+                className={cn(
+                  isAuthor ? "text-gray-500 hover:text-blue-600" : "text-gray-300 cursor-not-allowed"
+                )}
+                title={isAuthor ? "수정" : "본인 메시지만 수정 가능"}
               >
                 <Edit2 className="w-4 h-4" />
               </Button>
@@ -147,7 +161,11 @@ function MessageListItem({ message, onEdit, onDelete }: MessageListItemProps) {
                 variant="ghost"
                 size="sm"
                 onClick={handleDelete}
-                className="text-gray-500 hover:text-red-600"
+                disabled={!isAuthor}
+                className={cn(
+                  isAuthor ? "text-gray-500 hover:text-red-600" : "text-gray-300 cursor-not-allowed"
+                )}
+                title={isAuthor ? "삭제" : "본인 메시지만 삭제 가능"}
               >
                 <Trash2 className="w-4 h-4" />
               </Button>

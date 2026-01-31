@@ -24,6 +24,15 @@ interface AdminQueryResult {
   } | null;
 }
 
+interface MemberQueryResult {
+  family_id: string;
+  user: {
+    id: string;
+    name: string;
+    nickname: string | null;
+  } | null;
+}
+
 // 랜덤 가족 코드 생성
 function generateFamilyCode(): string {
   const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
@@ -82,7 +91,8 @@ export async function GET() {
       .map(d => d.family?.id)
       .filter(Boolean) as string[];
 
-    let adminMap: Record<string, { name: string; nickname: string | null }> = {};
+    const adminMap: Record<string, { name: string; nickname: string | null }> = {};
+    const membersMap: Record<string, Array<{id: string; name: string; nickname: string | null}>> = {};
 
     if (familyIds.length > 0) {
       const { data: adminData } = await supabase
@@ -108,12 +118,42 @@ export async function GET() {
           }
         });
       }
+
+      // 각 가족의 모든 멤버 정보 가져오기
+      const { data: membersData } = await supabase
+        .from('family_members')
+        .select(`
+          family_id,
+          user:user_id (
+            id,
+            name,
+            nickname
+          )
+        `)
+        .in('family_id', familyIds);
+
+      if (membersData) {
+        const members = membersData as unknown as MemberQueryResult[];
+        members.forEach((item) => {
+          if (item.user) {
+            if (!membersMap[item.family_id]) {
+              membersMap[item.family_id] = [];
+            }
+            membersMap[item.family_id].push({
+              id: item.user.id,
+              name: item.user.name,
+              nickname: item.user.nickname,
+            });
+          }
+        });
+      }
     }
 
-    // 관리자 정보를 포함한 결과 반환
+    // 관리자 정보와 멤버 정보를 포함한 결과 반환
     const enrichedData = memberships.map(item => ({
       ...item,
       admin: item.family ? adminMap[item.family.id] || null : null,
+      members: item.family ? membersMap[item.family.id] || [] : [],
     }));
 
     return NextResponse.json({ data: enrichedData });

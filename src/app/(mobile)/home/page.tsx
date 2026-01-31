@@ -6,7 +6,7 @@ import { Plus, MessageSquare, Monitor, Calendar, Settings, Users } from 'lucide-
 import { Button } from '@/components/ui/button';
 import { MessageList } from '@/components/mobile';
 import { useMessages, useDateRefresh, useUser } from '@/hooks';
-import type { Message } from '@/types/database';
+import type { MessageWithAuthor } from '@/hooks/useMessages';
 
 const LAST_PAGE_KEY = 'mothers-reminder-last-page';
 
@@ -43,11 +43,11 @@ export default function MobileHomePage() {
     router.push('/messages/new');
   };
 
-  const handleEdit = (message: Message) => {
+  const handleEdit = (message: MessageWithAuthor) => {
     router.push(`/messages/${message.id}/edit`);
   };
 
-  const handleDelete = async (message: Message) => {
+  const handleDelete = async (message: MessageWithAuthor) => {
     const success = await deleteMessage(message.id);
     if (!success) {
       alert('메시지 삭제에 실패했습니다');
@@ -133,6 +133,7 @@ export default function MobileHomePage() {
         <MessageList
           messages={messages}
           loading={loading}
+          currentUserId={user?.id}
           onEdit={handleEdit}
           onDelete={handleDelete}
           emptyMessage="오늘 표시할 메시지가 없습니다"

@@ -71,11 +71,67 @@ export async function GET(request: NextRequest) {
     const requests = (requestData || []) as { family_id: string }[];
     const pendingFamilyIds = new Set(requests.map(r => r.family_id));
 
+    // 관리자 정보 가져오기
+    const { data: adminData } = await supabase
+      .from('family_members')
+      .select(`
+        family_id,
+        user:user_id (
+          name,
+          nickname
+        )
+      `)
+      .in('family_id', familyIds)
+      .eq('role', 'admin');
+
+    const adminMap: Record<string, { name: string; nickname: string | null }> = {};
+    if (adminData) {
+      (adminData as unknown as { family_id: string; user: { name: string; nickname: string | null } | null }[]).forEach((item) => {
+        if (item.user) {
+          adminMap[item.family_id] = {
+            name: item.user.name,
+            nickname: item.user.nickname,
+          };
+        }
+      });
+    }
+
+    // 모든 멤버 정보 가져오기
+    const { data: allMembersData } = await supabase
+      .from('family_members')
+      .select(`
+        family_id,
+        user:user_id (
+          id,
+          name,
+          nickname
+        )
+      `)
+      .in('family_id', familyIds);
+
+    const membersMap: Record<string, Array<{ id: string; name: string; nickname: string | null }>> = {};
+    if (allMembersData) {
+      (allMembersData as unknown as { family_id: string; user: { id: string; name: string; nickname: string | null } | null }[]).forEach((item) => {
+        if (item.user) {
+          if (!membersMap[item.family_id]) {
+            membersMap[item.family_id] = [];
+          }
+          membersMap[item.family_id].push({
+            id: item.user.id,
+            name: item.user.name,
+            nickname: item.user.nickname,
+          });
+        }
+      });
+    }
+
     // 결과 조합
     const results = families.map(family => ({
       ...family,
       is_member: memberFamilyIds.has(family.id),
       has_pending_request: pendingFamilyIds.has(family.id),
+      admin: adminMap[family.id] || null,
+      members: membersMap[family.id] || [],
     }));
 
     return NextResponse.json({ data: results });

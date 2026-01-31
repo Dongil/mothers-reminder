@@ -12,7 +12,8 @@ import { Badge } from '@/components/ui/badge';
 import { createClient } from '@/lib/supabase/client';
 import { cn, formatTime, getPriorityColor, getPriorityLabel, getTodayString } from '@/lib/utils';
 import { useUser } from '@/hooks';
-import type { Message, Priority } from '@/types/database';
+import type { Priority } from '@/types/database';
+import type { MessageWithAuthor } from '@/hooks/useMessages';
 
 function ManagePageContent() {
   const router = useRouter();
@@ -21,7 +22,7 @@ function ManagePageContent() {
   const initialDate = searchParams.get('date') || getTodayString();
 
   const [selectedDate, setSelectedDate] = useState(initialDate);
-  const [messages, setMessages] = useState<Message[]>([]);
+  const [messages, setMessages] = useState<MessageWithAuthor[]>([]);
   const [loading, setLoading] = useState(true);
   const supabase = createClient();
 
@@ -33,7 +34,15 @@ function ManagePageContent() {
     try {
       const { data, error } = await supabase
         .from('messages')
-        .select('*')
+        .select(`
+          *,
+          author:author_id (
+            id,
+            name,
+            nickname,
+            gender
+          )
+        `)
         .eq('family_id', user.activeFamily.id)
         .eq('display_date', selectedDate)
         .order('display_time', { ascending: true, nullsFirst: false })
@@ -41,7 +50,7 @@ function ManagePageContent() {
         .order('created_at', { ascending: false });
 
       if (error) throw error;
-      setMessages((data as unknown as Message[]) || []);
+      setMessages((data as unknown as MessageWithAuthor[]) || []);
     } catch (err) {
       console.error('Failed to fetch messages:', err);
     } finally {
@@ -69,13 +78,15 @@ function ManagePageContent() {
   };
 
   // 메시지 수정
-  const handleEdit = (message: Message) => {
+  const handleEdit = (message: MessageWithAuthor) => {
+    if (message.author_id !== user?.id) return;
     router.push(`/messages/${message.id}/edit`);
   };
 
   // 메시지 삭제
-  const handleDelete = async (message: Message) => {
+  const handleDelete = async (message: MessageWithAuthor) => {
     if (!supabase) return;
+    if (message.author_id !== user?.id) return;
     if (!confirm('정말 삭제하시겠습니까?')) return;
 
     try {
@@ -185,74 +196,94 @@ function ManagePageContent() {
           </div>
         ) : (
           <div className="space-y-3">
-            {messages.map((message) => (
-              <Card
-                key={message.id}
-                className={cn('border-l-4', getPriorityColor(message.priority as Priority))}
-              >
-                <CardContent className="p-4">
-                  <div className="flex items-start justify-between gap-3">
-                    <div className="flex-1 min-w-0">
-                      {/* 상단: 배지 + 시간 */}
-                      <div className="flex items-center gap-2 mb-2">
-                        <Badge
-                          variant={message.priority as 'normal' | 'important' | 'urgent'}
-                          className="text-xs"
-                        >
-                          {getPriorityLabel(message.priority as Priority)}
-                        </Badge>
+            {messages.map((message) => {
+              const isAuthor = user?.id && message.author_id === user.id;
+              return (
+                <Card
+                  key={message.id}
+                  className={cn('border-l-4', getPriorityColor(message.priority as Priority))}
+                >
+                  <CardContent className="p-4">
+                    <div className="flex items-start justify-between gap-3">
+                      <div className="flex-1 min-w-0">
+                        {/* 상단: 배지 + 시간 */}
+                        <div className="flex items-center gap-2 mb-2">
+                          <Badge
+                            variant={message.priority as 'normal' | 'important' | 'urgent'}
+                            className="text-xs"
+                          >
+                            {getPriorityLabel(message.priority as Priority)}
+                          </Badge>
 
-                        {message.display_time ? (
-                          <span className="text-xs text-blue-600 flex items-center gap-1">
-                            <Clock className="w-3 h-3" />
-                            {formatTime(message.display_time)}
-                          </span>
-                        ) : (
-                          <span className="text-xs text-gray-500">종일</span>
+                          {message.display_time ? (
+                            <span className="text-xs text-blue-600 flex items-center gap-1">
+                              <Clock className="w-3 h-3" />
+                              {formatTime(message.display_time)}
+                            </span>
+                          ) : (
+                            <span className="text-xs text-gray-500">종일</span>
+                          )}
+                        </div>
+
+                        {/* 메시지 내용 */}
+                        <p className="text-gray-900 line-clamp-2">{message.content}</p>
+
+                        {/* 작성자 정보 */}
+                        <div className="mt-2 text-xs text-gray-500">
+                          {message.author?.gender === 'male' ? '👨' :
+                           message.author?.gender === 'female' ? '👩' : '👤'}
+                          {' '}{message.author?.nickname || message.author?.name || '가족'}
+                        </div>
+
+                        {/* TTS 시간 */}
+                        {message.tts_times && message.tts_times.length > 0 && (
+                          <div className="mt-2 flex flex-wrap gap-1">
+                            {message.tts_times.map((time) => (
+                              <span
+                                key={time}
+                                className="text-xs bg-gray-100 text-gray-600 px-2 py-0.5 rounded"
+                              >
+                                ⏰ {time}
+                              </span>
+                            ))}
+                          </div>
                         )}
                       </div>
 
-                      {/* 메시지 내용 */}
-                      <p className="text-gray-900 line-clamp-2">{message.content}</p>
-
-                      {/* TTS 시간 */}
-                      {message.tts_times && message.tts_times.length > 0 && (
-                        <div className="mt-2 flex flex-wrap gap-1">
-                          {message.tts_times.map((time) => (
-                            <span
-                              key={time}
-                              className="text-xs bg-gray-100 text-gray-600 px-2 py-0.5 rounded"
-                            >
-                              ⏰ {time}
-                            </span>
-                          ))}
-                        </div>
-                      )}
+                      {/* 액션 버튼 */}
+                      <div className="flex flex-col gap-1 shrink-0">
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className={cn(
+                            "h-8 w-8",
+                            isAuthor ? "text-gray-500 hover:text-blue-600" : "text-gray-300 cursor-not-allowed"
+                          )}
+                          onClick={() => handleEdit(message)}
+                          disabled={!isAuthor}
+                          title={isAuthor ? "수정" : "본인 메시지만 수정 가능"}
+                        >
+                          <Pencil className="w-4 h-4" />
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className={cn(
+                            "h-8 w-8",
+                            isAuthor ? "text-gray-500 hover:text-red-600" : "text-gray-300 cursor-not-allowed"
+                          )}
+                          onClick={() => handleDelete(message)}
+                          disabled={!isAuthor}
+                          title={isAuthor ? "삭제" : "본인 메시지만 삭제 가능"}
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </Button>
+                      </div>
                     </div>
-
-                    {/* 액션 버튼 */}
-                    <div className="flex flex-col gap-1 shrink-0">
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        className="h-8 w-8 text-gray-500 hover:text-blue-600"
-                        onClick={() => handleEdit(message)}
-                      >
-                        <Pencil className="w-4 h-4" />
-                      </Button>
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        className="h-8 w-8 text-gray-500 hover:text-red-600"
-                        onClick={() => handleDelete(message)}
-                      >
-                        <Trash2 className="w-4 h-4" />
-                      </Button>
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-            ))}
+                  </CardContent>
+                </Card>
+              );
+            })}
           </div>
         )}
       </main>

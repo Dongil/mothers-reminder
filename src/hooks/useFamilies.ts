@@ -9,10 +9,17 @@ interface AdminInfo {
   nickname: string | null;
 }
 
+interface MemberInfo {
+  id: string;
+  name: string;
+  nickname: string | null;
+}
+
 interface FamilyWithMembership {
   membership: FamilyMember;
   family: Family;
   admin: AdminInfo | null;
+  members: MemberInfo[];
 }
 
 interface UseFamiliesReturn {
@@ -58,6 +65,7 @@ export function useFamilies(): UseFamiliesReturn {
         joined_at: string;
         family: Family;
         admin: AdminInfo | null;
+        members: MemberInfo[];
       }) => ({
         membership: {
           id: item.id,
@@ -69,6 +77,7 @@ export function useFamilies(): UseFamiliesReturn {
         },
         family: item.family,
         admin: item.admin,
+        members: item.members || [],
       }));
 
       setFamilies(formatted);

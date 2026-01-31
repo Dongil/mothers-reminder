@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import {
   Users,
   Plus,
@@ -26,6 +26,8 @@ interface FamilySearchResult {
   created_at: string;
   is_member: boolean;
   has_pending_request: boolean;
+  admin: { name: string; nickname: string | null } | null;
+  members: Array<{ id: string; name: string; nickname: string | null }>;
 }
 
 export function FamilyManagementSection() {
@@ -44,6 +46,26 @@ export function FamilyManagementSection() {
   const [editingName, setEditingName] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [hasSearched, setHasSearched] = useState(false);
+  const [recentlyActivated, setRecentlyActivated] = useState<string | null>(null);
+
+  // 활성 카드가 먼저 나오도록 정렬
+  const sortedAdminFamilies = useMemo(() => {
+    return [...families.filter(f => f.membership.role === 'admin')]
+      .sort((a, b) => {
+        if (a.membership.is_active && !b.membership.is_active) return -1;
+        if (!a.membership.is_active && b.membership.is_active) return 1;
+        return 0;
+      });
+  }, [families]);
+
+  const sortedMemberFamilies = useMemo(() => {
+    return [...families.filter(f => f.membership.role === 'member')]
+      .sort((a, b) => {
+        if (a.membership.is_active && !b.membership.is_active) return -1;
+        if (!a.membership.is_active && b.membership.is_active) return 1;
+        return 0;
+      });
+  }, [families]);
 
   const handleCreateFamily = async () => {
     if (!newFamilyName.trim()) return;
@@ -84,6 +106,9 @@ export function FamilyManagementSection() {
     setIsLoading(true);
     await setActiveFamily(familyId);
     await refreshUser();
+    // 활성 변경 효과
+    setRecentlyActivated(familyId);
+    setTimeout(() => setRecentlyActivated(null), 1500);
     setIsLoading(false);
   };
 
@@ -117,6 +142,17 @@ export function FamilyManagementSection() {
     alert('코드가 복사되었습니다!');
   };
 
+  // 멤버 이름 포맷팅 헬퍼
+  const formatMemberNames = (members: Array<{ id: string; name: string; nickname: string | null }>) => {
+    return members.map(m => m.nickname || m.name).join(', ');
+  };
+
+  // 관리자 이름 포맷팅 헬퍼
+  const formatAdminName = (admin: { name: string; nickname: string | null } | null) => {
+    if (!admin) return '';
+    return admin.nickname ? `${admin.name}(${admin.nickname})` : admin.name;
+  };
+
   return (
     <section className="bg-white rounded-lg shadow">
       {/* 헤더 */}
@@ -144,18 +180,18 @@ export function FamilyManagementSection() {
               <Label className="text-sm font-semibold text-gray-700">내가 만든 가족</Label>
             </div>
 
-            {families.filter(f => f.membership.role === 'admin').length === 0 ? (
+            {sortedAdminFamilies.length === 0 ? (
               <p className="text-sm text-gray-500 py-2 pl-3">만든 가족이 없습니다</p>
             ) : (
               <div className="space-y-2">
-                {families.filter(f => f.membership.role === 'admin').map(({ membership, family, admin }) => (
+                {sortedAdminFamilies.map(({ membership, family, admin, members }) => (
                   <div
                     key={family.id}
-                    className={`p-3 rounded-lg border ${
+                    className={`p-3 rounded-lg border transition-all duration-500 ${
                       membership.is_active
                         ? 'border-blue-500 bg-blue-50'
                         : 'border-gray-200'
-                    }`}
+                    } ${recentlyActivated === family.id ? 'ring-2 ring-blue-400 ring-offset-2 scale-[1.02]' : ''}`}
                   >
                     {editingId === family.id ? (
                       <div className="flex gap-2">
@@ -182,21 +218,33 @@ export function FamilyManagementSection() {
                       </div>
                     ) : (
                       <>
-                        <div className="flex items-center justify-between">
-                          <div>
-                            <div className="font-medium text-gray-900">{family.name}</div>
-                          </div>
-                          <div className="flex items-center gap-1">
-                            {!membership.is_active && (
-                              <Button
-                                variant="ghost"
-                                size="sm"
-                                onClick={() => handleSetActive(family.id)}
-                                disabled={isLoading}
-                              >
-                                선택
-                              </Button>
+                        <div className="flex items-center justify-between gap-2">
+                          <div className="flex-1 min-w-0">
+                            <div className="font-medium text-gray-900">
+                              {family.name} - {formatAdminName(admin)}
+                            </div>
+                            {members.length > 0 && (
+                              <div className={`mt-1 text-xs ${membership.is_active ? 'text-blue-600' : 'text-gray-600'}`}>
+                                참가 가족: {formatMemberNames(members)}
+                              </div>
                             )}
+                          </div>
+                          <div className="flex items-center gap-1 flex-shrink-0">
+                            <div className="w-12 text-center">
+                              {membership.is_active ? (
+                                <span className="text-sm font-bold text-blue-600">활성</span>
+                              ) : (
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  onClick={() => handleSetActive(family.id)}
+                                  disabled={isLoading}
+                                  className="px-2"
+                                >
+                                  선택
+                                </Button>
+                              )}
+                            </div>
                             <Button
                               variant="ghost"
                               size="icon"
@@ -219,9 +267,6 @@ export function FamilyManagementSection() {
                             </Button>
                           </div>
                         </div>
-                        {membership.is_active && (
-                          <div className="mt-1 text-xs text-blue-600">현재 활성 가족</div>
-                        )}
                       </>
                     )}
                   </div>
@@ -260,161 +305,6 @@ export function FamilyManagementSection() {
             >
               <Plus className="w-4 h-4 mr-2" />
               새 가족 만들기
-            </Button>
-          )}
-
-          {/* 구분선 */}
-          <div className="border-t border-gray-200 my-4" />
-
-          {/* 참여한 가족 섹션 */}
-          <div className="space-y-3">
-            <div className="flex items-center gap-2">
-              <div className="w-1 h-4 bg-green-500 rounded" />
-              <Label className="text-sm font-semibold text-gray-700">참여한 가족</Label>
-            </div>
-
-            {families.filter(f => f.membership.role === 'member').length === 0 ? (
-              <p className="text-sm text-gray-500 py-2 pl-3">참여한 가족이 없습니다</p>
-            ) : (
-              <div className="space-y-2">
-                {families.filter(f => f.membership.role === 'member').map(({ membership, family, admin }) => (
-                  <div
-                    key={family.id}
-                    className={`p-3 rounded-lg border ${
-                      membership.is_active
-                        ? 'border-green-500 bg-green-50'
-                        : 'border-gray-200'
-                    }`}
-                  >
-                    <div className="flex items-center justify-between">
-                      <div>
-                        <div className="font-medium text-gray-900">{family.name}</div>
-                        <div className="text-sm text-gray-500">
-                          {admin && (
-                            <span>관리자: {admin.name}{admin.nickname ? `(${admin.nickname})` : ''}</span>
-                          )}
-                        </div>
-                      </div>
-                      <div className="flex items-center gap-1">
-                        {!membership.is_active && (
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={() => handleSetActive(family.id)}
-                            disabled={isLoading}
-                          >
-                            선택
-                          </Button>
-                        )}
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          onClick={() => handleLeaveFamily(family.id)}
-                          disabled={isLoading}
-                          title="가족 탈퇴"
-                        >
-                          <LogOut className="w-4 h-4 text-gray-500" />
-                        </Button>
-                      </div>
-                    </div>
-                    {membership.is_active && (
-                      <div className="mt-1 text-xs text-green-600">현재 활성 가족</div>
-                    )}
-                  </div>
-                ))}
-              </div>
-            )}
-          </div>
-
-          {/* 가족 검색 & 참여 */}
-          {showSearchForm ? (
-            <div className="p-3 bg-gray-50 rounded-lg space-y-3">
-              <Label>가족 이름으로 검색</Label>
-              <div className="flex gap-2">
-                <Input
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                  placeholder="가족 이름 입력"
-                  onKeyDown={(e) => e.key === 'Enter' && handleSearch()}
-                />
-                <Button
-                  variant="primary"
-                  onClick={handleSearch}
-                  disabled={isLoading || !searchQuery.trim()}
-                >
-                  검색
-                </Button>
-              </div>
-
-              {/* 검색 결과 리스트 */}
-              {hasSearched && (
-                <div className="space-y-2">
-                  {searchResults.length === 0 ? (
-                    <p className="text-sm text-gray-500 py-2">검색 결과가 없습니다</p>
-                  ) : (
-                    <>
-                      <p className="text-sm text-gray-600">{searchResults.length}개의 가족을 찾았습니다</p>
-                      <div className="max-h-48 overflow-y-auto space-y-2">
-                        {searchResults.map((family) => (
-                          <div
-                            key={family.id}
-                            className={`p-3 border rounded-lg cursor-pointer transition-colors ${
-                              selectedFamily?.id === family.id
-                                ? 'border-blue-500 bg-blue-50'
-                                : 'border-gray-200 hover:border-gray-300'
-                            }`}
-                            onClick={() => setSelectedFamily(family)}
-                          >
-                            <div className="flex items-center justify-between">
-                              <div className="font-medium text-gray-900">{family.name}</div>
-                              {family.is_member ? (
-                                <span className="text-xs text-green-600 bg-green-100 px-2 py-0.5 rounded">멤버</span>
-                              ) : family.has_pending_request ? (
-                                <span className="text-xs text-yellow-600 bg-yellow-100 px-2 py-0.5 rounded">요청중</span>
-                              ) : null}
-                            </div>
-                          </div>
-                        ))}
-                      </div>
-                    </>
-                  )}
-                </div>
-              )}
-
-              {/* 선택된 가족에 참여 요청 */}
-              {selectedFamily && !selectedFamily.is_member && !selectedFamily.has_pending_request && (
-                <Button
-                  variant="primary"
-                  className="w-full"
-                  onClick={() => handleSendRequest(selectedFamily)}
-                  disabled={isLoading}
-                >
-                  &apos;{selectedFamily.name}&apos; 가족에 참여 요청 보내기
-                </Button>
-              )}
-
-              <Button
-                variant="ghost"
-                className="w-full"
-                onClick={() => {
-                  setShowSearchForm(false);
-                  setSearchQuery('');
-                  setSearchResults([]);
-                  setSelectedFamily(null);
-                  setHasSearched(false);
-                }}
-              >
-                닫기
-              </Button>
-            </div>
-          ) : (
-            <Button
-              variant="outline"
-              className="w-full"
-              onClick={() => setShowSearchForm(true)}
-            >
-              <Search className="w-4 h-4 mr-2" />
-              가족 찾아 참여하기
             </Button>
           )}
 
@@ -465,28 +355,214 @@ export function FamilyManagementSection() {
             </div>
           )}
 
+          {/* 구분선 */}
+          <div className="border-t border-gray-200 my-4" />
+
+          {/* 참여한 가족 섹션 */}
+          <div className="space-y-3">
+            <div className="flex items-center gap-2">
+              <div className="w-1 h-4 bg-green-500 rounded" />
+              <Label className="text-sm font-semibold text-gray-700">참여한 가족</Label>
+            </div>
+
+            {sortedMemberFamilies.length === 0 ? (
+              <p className="text-sm text-gray-500 py-2 pl-3">참여한 가족이 없습니다</p>
+            ) : (
+              <div className="space-y-2">
+                {sortedMemberFamilies.map(({ membership, family, admin, members }) => (
+                  <div
+                    key={family.id}
+                    className={`p-3 rounded-lg border transition-all duration-500 ${
+                      membership.is_active
+                        ? 'border-green-500 bg-green-50'
+                        : 'border-gray-200'
+                    } ${recentlyActivated === family.id ? 'ring-2 ring-green-400 ring-offset-2 scale-[1.02]' : ''}`}
+                  >
+                    <div className="flex items-center justify-between gap-2">
+                      <div className="flex-1 min-w-0">
+                        <div className="font-medium text-gray-900">
+                          {family.name} - {formatAdminName(admin)}
+                        </div>
+                        {members.length > 0 && (
+                          <div className={`mt-1 text-xs ${membership.is_active ? 'text-green-600' : 'text-gray-600'}`}>
+                            참가 가족: {formatMemberNames(members)}
+                          </div>
+                        )}
+                      </div>
+                      <div className="flex items-center gap-1 flex-shrink-0">
+                        <div className="w-12 text-center">
+                          {membership.is_active ? (
+                            <span className="text-sm font-bold text-green-600">활성</span>
+                          ) : (
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => handleSetActive(family.id)}
+                              disabled={isLoading}
+                              className="px-2"
+                            >
+                              선택
+                            </Button>
+                          )}
+                        </div>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          onClick={() => handleLeaveFamily(family.id)}
+                          disabled={isLoading}
+                          title="가족 탈퇴"
+                        >
+                          <LogOut className="w-4 h-4 text-gray-500" />
+                        </Button>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+
+          {/* 가족 검색 & 참여 */}
+          {showSearchForm ? (
+            <div className="p-3 bg-gray-50 rounded-lg space-y-3">
+              <Label>가족 이름으로 검색</Label>
+              <div className="flex gap-2">
+                <Input
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  placeholder="가족 이름 입력"
+                  onKeyDown={(e) => e.key === 'Enter' && handleSearch()}
+                />
+                <Button
+                  variant="primary"
+                  onClick={handleSearch}
+                  disabled={isLoading || !searchQuery.trim()}
+                >
+                  검색
+                </Button>
+              </div>
+
+              {/* 검색 결과 리스트 */}
+              {hasSearched && (
+                <div className="space-y-2">
+                  {searchResults.length === 0 ? (
+                    <p className="text-sm text-gray-500 py-2">검색 결과가 없습니다</p>
+                  ) : (
+                    <>
+                      <p className="text-sm text-gray-600">{searchResults.length}개의 가족을 찾았습니다</p>
+                      <div className="max-h-60 overflow-y-auto space-y-2">
+                        {searchResults.map((family) => (
+                          <div
+                            key={family.id}
+                            className={`p-3 border rounded-lg cursor-pointer transition-colors ${
+                              selectedFamily?.id === family.id
+                                ? 'border-blue-500 bg-blue-50'
+                                : 'border-gray-200 hover:border-gray-300'
+                            }`}
+                            onClick={() => setSelectedFamily(family)}
+                          >
+                            <div className="flex items-center justify-between">
+                              <div className="flex-1 min-w-0">
+                                <div className="font-medium text-gray-900">
+                                  {family.name} - {formatAdminName(family.admin)}
+                                </div>
+                                {family.members.length > 0 && (
+                                  <div className="mt-1 text-xs text-gray-600">
+                                    참가 가족: {formatMemberNames(family.members)}
+                                  </div>
+                                )}
+                              </div>
+                              {family.is_member ? (
+                                <span className="text-xs text-green-600 bg-green-100 px-2 py-0.5 rounded flex-shrink-0 ml-2">멤버</span>
+                              ) : family.has_pending_request ? (
+                                <span className="text-xs font-semibold text-amber-700 bg-amber-100 border border-amber-300 px-2 py-1 rounded flex-shrink-0 ml-2">요청중</span>
+                              ) : null}
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </>
+                  )}
+                </div>
+              )}
+
+              {/* 선택된 가족에 참여 요청 */}
+              {selectedFamily && !selectedFamily.is_member && !selectedFamily.has_pending_request && (
+                <Button
+                  variant="primary"
+                  className="w-full"
+                  onClick={() => handleSendRequest(selectedFamily)}
+                  disabled={isLoading}
+                >
+                  &apos;{selectedFamily.name}&apos; 가족에 참여 요청 보내기
+                </Button>
+              )}
+
+              <Button
+                variant="ghost"
+                className="w-full"
+                onClick={() => {
+                  setShowSearchForm(false);
+                  setSearchQuery('');
+                  setSearchResults([]);
+                  setSelectedFamily(null);
+                  setHasSearched(false);
+                }}
+              >
+                닫기
+              </Button>
+            </div>
+          ) : (
+            <Button
+              variant="outline"
+              className="w-full"
+              onClick={() => setShowSearchForm(true)}
+            >
+              <Search className="w-4 h-4 mr-2" />
+              가족 찾아 참여하기
+            </Button>
+          )}
+
           {/* 보낸 참여 요청 */}
           {sentRequests.filter(r => r.status === 'pending').length > 0 && (
             <div className="space-y-2">
               <Label className="text-sm text-gray-600">보낸 참여 요청</Label>
               {sentRequests
                 .filter(r => r.status === 'pending')
-                .map((request) => (
-                  <div key={request.id} className="p-3 border rounded-lg flex items-center justify-between">
-                    <div>
-                      <div className="font-medium">{request.family?.name}</div>
-                      <div className="text-sm text-yellow-600">대기 중</div>
+                .map((request) => {
+                  const reqWithInfo = request as typeof request & {
+                    admin?: { name: string; nickname: string | null } | null;
+                    members?: Array<{ id: string; name: string; nickname: string | null }>;
+                  };
+                  return (
+                    <div key={request.id} className="p-3 border-2 border-amber-300 bg-amber-50 rounded-lg">
+                      <div className="flex items-center justify-between gap-2">
+                        <div className="flex-1 min-w-0">
+                          <div className="font-medium text-amber-900">
+                            {request.family?.name} - {formatAdminName(reqWithInfo.admin || null)}
+                          </div>
+                          {reqWithInfo.members && reqWithInfo.members.length > 0 && (
+                            <div className="mt-1 text-xs text-gray-600">
+                              참가 가족: {formatMemberNames(reqWithInfo.members)}
+                            </div>
+                          )}
+                          <span className="inline-block mt-1 text-xs font-semibold text-amber-700 bg-amber-100 border border-amber-300 px-2 py-1 rounded">
+                            대기 중
+                          </span>
+                        </div>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => cancelRequest(request.id)}
+                          disabled={isLoading}
+                          className="flex-shrink-0"
+                        >
+                          취소
+                        </Button>
+                      </div>
                     </div>
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => cancelRequest(request.id)}
-                      disabled={isLoading}
-                    >
-                      취소
-                    </Button>
-                  </div>
-                ))}
+                  );
+                })}
             </div>
           )}
         </div>

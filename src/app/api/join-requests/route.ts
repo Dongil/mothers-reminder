@@ -41,7 +41,76 @@ export async function GET(request: NextRequest) {
         );
       }
 
-      return NextResponse.json({ data });
+      // 각 가족의 관리자와 멤버 정보 가져오기
+      const familyIds = (data || [])
+        .map((r: { family: { id: string } | null }) => r.family?.id)
+        .filter(Boolean) as string[];
+
+      const adminMap: Record<string, { name: string; nickname: string | null }> = {};
+      const membersMap: Record<string, Array<{ id: string; name: string; nickname: string | null }>> = {};
+
+      if (familyIds.length > 0) {
+        // 관리자 정보
+        const { data: adminData } = await supabase
+          .from('family_members')
+          .select(`
+            family_id,
+            user:user_id (
+              name,
+              nickname
+            )
+          `)
+          .in('family_id', familyIds)
+          .eq('role', 'admin');
+
+        if (adminData) {
+          (adminData as unknown as { family_id: string; user: { name: string; nickname: string | null } | null }[]).forEach((item) => {
+            if (item.user) {
+              adminMap[item.family_id] = {
+                name: item.user.name,
+                nickname: item.user.nickname,
+              };
+            }
+          });
+        }
+
+        // 멤버 정보
+        const { data: allMembersData } = await supabase
+          .from('family_members')
+          .select(`
+            family_id,
+            user:user_id (
+              id,
+              name,
+              nickname
+            )
+          `)
+          .in('family_id', familyIds);
+
+        if (allMembersData) {
+          (allMembersData as unknown as { family_id: string; user: { id: string; name: string; nickname: string | null } | null }[]).forEach((item) => {
+            if (item.user) {
+              if (!membersMap[item.family_id]) {
+                membersMap[item.family_id] = [];
+              }
+              membersMap[item.family_id].push({
+                id: item.user.id,
+                name: item.user.name,
+                nickname: item.user.nickname,
+              });
+            }
+          });
+        }
+      }
+
+      // 결과에 관리자/멤버 정보 추가
+      const enrichedData = (data || []).map((request: { family: { id: string } | null }) => ({
+        ...request,
+        admin: request.family ? adminMap[request.family.id] || null : null,
+        members: request.family ? membersMap[request.family.id] || [] : [],
+      }));
+
+      return NextResponse.json({ data: enrichedData });
     } else {
       // 내가 관리자인 가족에 대한 요청
       // 먼저 관리자인 가족 ID 목록 조회

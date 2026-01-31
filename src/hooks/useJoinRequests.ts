@@ -15,6 +15,8 @@ interface FamilySearchResult {
   created_at: string;
   is_member: boolean;
   has_pending_request: boolean;
+  admin: { name: string; nickname: string | null } | null;
+  members: Array<{ id: string; name: string; nickname: string | null }>;
 }
 
 interface UseJoinRequestsReturn {
