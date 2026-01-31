@@ -38,17 +38,18 @@ export async function GET() {
         .eq('id', user.id)
         .single();
 
+      const userRecord = userData as { family_id: string | null } | null;
       diagnostics.userRecord = {
-        familyId: userData?.family_id || null,
+        familyId: userRecord?.family_id || null,
         error: userError?.message || null,
       };
 
       // 5. 가족 멤버 확인
-      if (userData?.family_id) {
+      if (userRecord?.family_id) {
         const { data: members, error: membersError } = await supabase
           .from('family_members')
           .select('user_id, role')
-          .eq('family_id', userData.family_id);
+          .eq('family_id', userRecord.family_id);
 
         diagnostics.familyMembers = {
           count: members?.length || 0,
