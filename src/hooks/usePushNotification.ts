@@ -7,6 +7,7 @@ interface UsePushNotificationReturn {
   permission: NotificationPermission;
   isSubscribed: boolean;
   loading: boolean;
+  error: string | null;
   subscribe: () => Promise<boolean>;
   unsubscribe: () => Promise<boolean>;
 }
@@ -42,29 +43,54 @@ export function usePushNotification(): UsePushNotificationReturn {
   const [permission, setPermission] = useState<NotificationPermission>('default');
   const [isSubscribed, setIsSubscribed] = useState(false);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
   // 지원 여부 및 현재 상태 확인
   useEffect(() => {
     const checkSupport = async () => {
-      const supported =
-        typeof window !== 'undefined' &&
-        'serviceWorker' in navigator &&
-        'PushManager' in window &&
-        'Notification' in window;
+      console.log('[Push] Checking support...');
 
+      const hasServiceWorker = typeof window !== 'undefined' && 'serviceWorker' in navigator;
+      const hasPushManager = typeof window !== 'undefined' && 'PushManager' in window;
+      const hasNotification = typeof window !== 'undefined' && 'Notification' in window;
+
+      console.log('[Push] Support check:', { hasServiceWorker, hasPushManager, hasNotification });
+
+      const supported = hasServiceWorker && hasPushManager && hasNotification;
       setIsSupported(supported);
 
-      if (supported) {
-        setPermission(Notification.permission);
+      if (!supported) {
+        if (!hasServiceWorker) setError('Service Worker 미지원');
+        else if (!hasPushManager) setError('Push Manager 미지원');
+        else if (!hasNotification) setError('Notification 미지원');
+        setLoading(false);
+        return;
+      }
 
-        try {
-          // 현재 구독 상태 확인
-          const registration = await navigator.serviceWorker.ready;
-          const subscription = await registration.pushManager.getSubscription();
-          setIsSubscribed(!!subscription);
-        } catch (err) {
-          console.error('Failed to check subscription:', err);
+      setPermission(Notification.permission);
+      console.log('[Push] Permission:', Notification.permission);
+
+      try {
+        // Service Worker 등록 확인
+        const registrations = await navigator.serviceWorker.getRegistrations();
+        console.log('[Push] SW registrations:', registrations.length);
+
+        if (registrations.length === 0) {
+          setError('Service Worker가 등록되지 않음');
+          setLoading(false);
+          return;
         }
+
+        // 현재 구독 상태 확인
+        const registration = await navigator.serviceWorker.ready;
+        console.log('[Push] SW ready:', registration.scope);
+
+        const subscription = await registration.pushManager.getSubscription();
+        console.log('[Push] Existing subscription:', !!subscription);
+        setIsSubscribed(!!subscription);
+      } catch (err) {
+        console.error('[Push] Failed to check subscription:', err);
+        setError(`구독 확인 실패: ${err instanceof Error ? err.message : String(err)}`);
       }
 
       setLoading(false);
@@ -75,44 +101,58 @@ export function usePushNotification(): UsePushNotificationReturn {
 
   // 푸시 구독
   const subscribe = useCallback(async (): Promise<boolean> => {
-    if (!isSupported) return false;
+    console.log('[Push] Subscribe called, isSupported:', isSupported);
+    setError(null);
+
+    if (!isSupported) {
+      setError('푸시 알림이 지원되지 않습니다');
+      return false;
+    }
 
     try {
       setLoading(true);
 
       // 알림 권한 요청
+      console.log('[Push] Requesting permission...');
       const permissionResult = await Notification.requestPermission();
       setPermission(permissionResult);
+      console.log('[Push] Permission result:', permissionResult);
 
       if (permissionResult !== 'granted') {
-        console.log('Notification permission denied');
+        setError('알림 권한이 거부되었습니다');
         return false;
       }
 
       // Service Worker 구독
+      console.log('[Push] Getting SW ready...');
       const registration = await navigator.serviceWorker.ready;
+      console.log('[Push] SW scope:', registration.scope);
 
       const vapidPublicKey = process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY;
+      console.log('[Push] VAPID key exists:', !!vapidPublicKey);
       if (!vapidPublicKey) {
-        console.error('VAPID public key not found');
+        setError('VAPID 공개키가 설정되지 않음');
         return false;
       }
 
+      console.log('[Push] Subscribing to push manager...');
       const subscription = await registration.pushManager.subscribe({
         userVisibleOnly: true,
         applicationServerKey: urlBase64ToUint8Array(vapidPublicKey) as BufferSource,
       });
+      console.log('[Push] Subscription endpoint:', subscription.endpoint.substring(0, 50) + '...');
 
       // 구독 정보 추출
       const p256dh = subscription.getKey('p256dh');
       const auth = subscription.getKey('auth');
 
       if (!p256dh || !auth) {
-        console.error('Failed to get subscription keys');
+        setError('구독 키를 가져올 수 없습니다');
         return false;
       }
 
       // 서버에 구독 정보 저장
+      console.log('[Push] Saving subscription to server...');
       const response = await fetch('/api/push-subscriptions', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -127,14 +167,20 @@ export function usePushNotification(): UsePushNotificationReturn {
       });
 
       if (response.ok) {
+        console.log('[Push] Subscription saved successfully');
         setIsSubscribed(true);
+        setError(null);
         return true;
       }
 
-      console.error('Failed to save subscription to server');
+      const errorData = await response.json().catch(() => ({}));
+      console.error('[Push] Server error:', response.status, errorData);
+      setError(`서버 저장 실패: ${errorData.error || response.status}`);
       return false;
-    } catch (error) {
-      console.error('Push subscription error:', error);
+    } catch (err) {
+      const errorMsg = err instanceof Error ? err.message : String(err);
+      console.error('[Push] Subscribe error:', err);
+      setError(`구독 오류: ${errorMsg}`);
       return false;
     } finally {
       setLoading(false);
@@ -178,6 +224,7 @@ export function usePushNotification(): UsePushNotificationReturn {
     permission,
     isSubscribed,
     loading,
+    error,
     subscribe,
     unsubscribe,
   };

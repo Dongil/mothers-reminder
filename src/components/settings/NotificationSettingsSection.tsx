@@ -12,6 +12,7 @@ export function NotificationSettingsSection() {
     permission,
     isSubscribed,
     loading: pushLoading,
+    error: pushError,
     subscribe,
     unsubscribe,
   } = usePushNotification();
@@ -44,11 +45,14 @@ export function NotificationSettingsSection() {
   }
 
   const getPushStatusText = () => {
+    if (pushError) return pushError;
     if (!isSupported) return '이 브라우저에서 지원되지 않습니다';
     if (permission === 'denied') return '브라우저 설정에서 알림을 허용해주세요';
     if (isSubscribed) return '알림이 활성화되어 있습니다';
     return '알림을 활성화하세요';
   };
+
+  const statusTextColor = pushError ? 'text-red-500' : 'text-gray-500';
 
   return (
     <section className="bg-white rounded-lg shadow">
@@ -76,7 +80,7 @@ export function NotificationSettingsSection() {
               <Bell className="w-5 h-5 text-blue-500" />
               <div>
                 <div className="font-medium text-gray-900">푸시 알림</div>
-                <div className="text-sm text-gray-500">{getPushStatusText()}</div>
+                <div className={`text-sm ${statusTextColor}`}>{getPushStatusText()}</div>
               </div>
             </div>
             <button
