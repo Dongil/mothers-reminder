@@ -82,17 +82,19 @@ export async function POST(request: NextRequest) {
 
     const userRecord = userData as unknown as User | null;
 
-    // users.family_id가 없으면 settings.active_family_id 확인
+    // users.family_id가 없으면 family_members에서 첫 번째 가족 사용
     let familyId = userRecord?.family_id;
     if (!familyId) {
-      const { data: settingsData } = await supabase
-        .from('settings')
-        .select('active_family_id')
+      const { data: membershipData } = await supabase
+        .from('family_members')
+        .select('family_id')
         .eq('user_id', user.id)
+        .limit(1)
         .single();
 
-      const settings = settingsData as { active_family_id: string | null } | null;
-      familyId = settings?.active_family_id || null;
+      const membership = membershipData as { family_id: string } | null;
+      familyId = membership?.family_id || null;
+      console.log('[Messages API] Using family_id from family_members:', familyId);
     }
 
     if (!familyId) {
