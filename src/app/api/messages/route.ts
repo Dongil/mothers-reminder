@@ -153,38 +153,43 @@ export async function POST(request: NextRequest) {
     }
 
     // 가족 멤버들에게 새 메시지 푸시 알림 발송 (작성자 제외)
+    let pushResult = null;
     if (data) {
-      const messageData = data as { id: string };
+      const createdMessage = data as { id: string };
       const contentPreview = body.content.length > 50
         ? body.content.substring(0, 50) + '...'
         : body.content;
 
-      console.log('[Messages API] Sending push notification:', {
+      console.log('[Messages API] Starting push notification:', {
         familyId: familyId,
         authorId: user.id,
-        messageId: messageData.id,
+        messageId: createdMessage.id,
+        contentPreview,
       });
 
-      sendPushToFamilyMembers(
-        familyId,
-        {
-          title: '새 메시지',
-          body: contentPreview,
-          tag: `new-message-${messageData.id}`,
-          data: {
-            url: '/display',
-            type: 'new_message',
-            messageId: messageData.id,
+      try {
+        pushResult = await sendPushToFamilyMembers(
+          familyId,
+          {
+            title: '새 메시지',
+            body: contentPreview,
+            tag: `new-message-${createdMessage.id}`,
+            data: {
+              url: '/display',
+              type: 'new_message',
+              messageId: createdMessage.id,
+            },
           },
-        },
-        user.id,
-        'new_message'
-      ).then(result => {
-        console.log('[Messages API] Push notification result:', result);
-      }).catch(err => console.error('[Messages API] Push notification error:', err));
+          user.id,
+          'new_message'
+        );
+        console.log('[Messages API] Push notification completed:', pushResult);
+      } catch (err) {
+        console.error('[Messages API] Push notification error:', err);
+      }
     }
 
-    return NextResponse.json({ data }, { status: 201 });
+    return NextResponse.json({ data, pushResult }, { status: 201 });
   } catch (error) {
     console.error('Messages POST error:', error);
     return NextResponse.json(
