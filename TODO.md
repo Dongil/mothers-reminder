@@ -4,7 +4,7 @@
 
 **시작일**: 2026년 1월 13일
 **목표**: MVP 완성
-**현재 상태**: v1.5.2 가족 참여 요청 푸시 알림 (2026년 1월 30일)
+**현재 상태**: v1.5.3 새 메시지 푸시 알림 및 알림 설정 (2026년 1월 31일)
 
 ---
 
@@ -465,6 +465,43 @@
 
 ---
 
+## v1.5.3: 새 메시지 푸시 알림 및 알림 설정 ✅ (2026년 1월 31일)
+
+### DB 스키마 변경
+- [x] `settings` 테이블에 `notify_join_request`, `notify_new_message` 필드 추가
+- [x] 마이그레이션 파일 (`v1.5.3_001_notification_settings.sql`)
+
+### 푸시 알림 확장
+- [x] 새 메시지 작성 시 → 가족 멤버에게 푸시 (작성자 제외)
+- [x] `sendPushToFamilyMembers()` 함수 추가 - 모든 가족 멤버에게 발송
+- [x] `useMessages.ts` - API 라우트 호출로 변경 (푸시 발송 트리거)
+- [x] 푸시 발송 시 알림 설정 확인 (`notify_new_message`, `notify_join_request`)
+
+### 설정 페이지 알림 섹션
+- [x] `NotificationSettingsSection.tsx` 컴포넌트 추가
+- [x] 푸시 알림 활성화 토글 (Service Worker 구독 관리)
+- [x] 가족 참여 요청 알림 ON/OFF 토글
+- [x] 새 메시지 알림 ON/OFF 토글
+
+### Service Worker 개선
+- [x] `public/sw.js` - 커스텀 Service Worker (next-pwa 대체)
+- [x] Workbox 제거로 캐시 관련 오류 해결
+- [x] `ServiceWorkerRegister.tsx` 컴포넌트 추가
+
+### 버그 수정
+- [x] Service Worker 등록 실패 문제 수정
+- [x] `users.family_id` null 시 `family_members` 테이블에서 가족 ID 조회
+- [x] VAPID 키 미설정 시 명확한 오류 메시지
+- [x] `SUPABASE_SERVICE_ROLE_KEY` 환경변수 추가 안내
+
+### 디버깅 엔드포인트 (개발용)
+- [x] `/api/push/test` - VAPID, Supabase, 구독 상태 진단
+- [x] `/api/push/send-test` - 본인에게 테스트 푸시 발송
+- [x] `/api/push/family-test` - 가족 멤버에게 테스트 푸시 발송
+- [x] `/api/push/message-test` - 메시지 생성 플로우 시뮬레이션
+
+---
+
 ## 향후 로드맵 (MVP 이후)
 
 ### v1.6 - (예약됨)
@@ -504,5 +541,5 @@
 ---
 
 **작성일**: 2026년 1월 13일
-**최종 업데이트**: 2026년 1월 30일
-**버전**: 1.5.2 (가족 참여 요청 푸시 알림)
+**최종 업데이트**: 2026년 1월 31일
+**버전**: 1.5.3 (새 메시지 푸시 알림 및 알림 설정)
