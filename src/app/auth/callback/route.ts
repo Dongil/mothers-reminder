@@ -7,22 +7,19 @@ export async function GET(request: NextRequest) {
   const type = requestUrl.searchParams.get('type');
   const next = requestUrl.searchParams.get('next') || '/home';
 
-  console.log('[Auth Callback Route] code:', code?.substring(0, 10), 'type:', type);
-
   if (code) {
     const supabase = await createClient();
 
     const { error } = await supabase.auth.exchangeCodeForSession(code);
 
     if (error) {
-      console.error('[Auth Callback Route] Exchange error:', error.message);
+      console.error('Auth exchange error:', error.message);
       // 에러 시 로그인 페이지로
       return NextResponse.redirect(new URL('/login?error=auth_failed', request.url));
     }
 
     // recovery 타입이면 비밀번호 재설정 페이지로
     if (type === 'recovery') {
-      console.log('[Auth Callback Route] Recovery flow, redirecting to reset-password');
       return NextResponse.redirect(new URL('/reset-password', request.url));
     }
 

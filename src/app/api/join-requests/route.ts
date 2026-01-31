@@ -282,9 +282,8 @@ export async function POST(request: NextRequest) {
           undefined,
           'join_request'
         );
-        console.log('[Join Request] Push notification result:', pushResult);
       } catch (err) {
-        console.error('[Join Request] Push notification error:', err);
+        console.error('Push notification error:', err);
       }
     }
 

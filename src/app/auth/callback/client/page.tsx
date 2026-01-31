@@ -27,11 +27,8 @@ export default function AuthCallbackPage() {
 
       // PKCE 플로우 처리
       if (code) {
-        console.log('[Auth Callback] PKCE flow detected, code:', code.substring(0, 10) + '...');
-
         // PASSWORD_RECOVERY 이벤트 리스너 설정
         const { data: { subscription } } = supabase.auth.onAuthStateChange((event) => {
-          console.log('[Auth Callback] Auth event:', event);
           if (event === 'PASSWORD_RECOVERY') {
             subscription.unsubscribe();
             router.push('/reset-password');
@@ -41,7 +38,7 @@ export default function AuthCallbackPage() {
         const { error } = await supabase.auth.exchangeCodeForSession(code);
 
         if (error) {
-          console.error('[Auth Callback] Exchange error:', error);
+          console.error('Auth exchange error:', error);
           subscription.unsubscribe();
           router.push('/login?error=auth_failed');
           return;
@@ -72,7 +69,6 @@ export default function AuthCallbackPage() {
         const refreshToken = params.get('refresh_token');
         const hashType = params.get('type');
 
-        console.log('[Auth Callback] Hash flow detected, type:', hashType);
 
         // recovery 타입이면 비밀번호 재설정
         if (hashType === 'recovery' && accessToken) {
@@ -82,7 +78,7 @@ export default function AuthCallbackPage() {
           });
 
           if (error) {
-            console.error('[Auth Callback] Session error:', error);
+            console.error('Auth session error:', error);
             router.push('/forgot-password?error=invalid_token');
             return;
           }
@@ -106,7 +102,6 @@ export default function AuthCallbackPage() {
       }
 
       // 기본 리다이렉트
-      console.log('[Auth Callback] No code or hash found, redirecting to login');
       router.push('/login');
     };
 

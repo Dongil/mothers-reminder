@@ -28,7 +28,6 @@ export default function Home() {
 
         // recovery 타입이면 세션 설정 후 비밀번호 재설정 페이지로 이동
         if (type === 'recovery' && accessToken) {
-          console.log('[Recovery Flow] Detected recovery type in hash');
           await supabase.auth.setSession({
             access_token: accessToken,
             refresh_token: refreshToken || '',
@@ -40,7 +39,6 @@ export default function Home() {
 
       // 2. 인증 이벤트 리스너 설정 (PASSWORD_RECOVERY 감지)
       const { data: { subscription } } = supabase.auth.onAuthStateChange((event) => {
-        console.log('[Auth Event on Root]', event);
         if (event === 'PASSWORD_RECOVERY') {
           router.replace('/reset-password');
         }

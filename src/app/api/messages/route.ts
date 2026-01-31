@@ -94,7 +94,6 @@ export async function POST(request: NextRequest) {
 
       const membership = membershipData as { family_id: string } | null;
       familyId = membership?.family_id || null;
-      console.log('[Messages API] Using family_id from family_members:', familyId);
     }
 
     if (!familyId) {
@@ -160,13 +159,6 @@ export async function POST(request: NextRequest) {
         ? body.content.substring(0, 50) + '...'
         : body.content;
 
-      console.log('[Messages API] Starting push notification:', {
-        familyId: familyId,
-        authorId: user.id,
-        messageId: createdMessage.id,
-        contentPreview,
-      });
-
       try {
         pushResult = await sendPushToFamilyMembers(
           familyId,
@@ -183,9 +175,8 @@ export async function POST(request: NextRequest) {
           user.id,
           'new_message'
         );
-        console.log('[Messages API] Push notification completed:', pushResult);
       } catch (err) {
-        console.error('[Messages API] Push notification error:', err);
+        console.error('Push notification error:', err);
       }
     }
 
