@@ -143,6 +143,12 @@ export async function POST(request: NextRequest) {
         ? body.content.substring(0, 50) + '...'
         : body.content;
 
+      console.log('[Messages API] Sending push notification:', {
+        familyId: userRecord.family_id,
+        authorId: user.id,
+        messageId: messageData.id,
+      });
+
       sendPushToFamilyMembers(
         userRecord.family_id,
         {
@@ -157,7 +163,9 @@ export async function POST(request: NextRequest) {
         },
         user.id,
         'new_message'
-      ).catch(err => console.error('Push notification error:', err));
+      ).then(result => {
+        console.log('[Messages API] Push notification result:', result);
+      }).catch(err => console.error('[Messages API] Push notification error:', err));
     }
 
     return NextResponse.json({ data }, { status: 201 });

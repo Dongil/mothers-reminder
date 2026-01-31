@@ -46,6 +46,8 @@ export async function sendPushToUser(
   userId: string,
   payload: PushPayload
 ): Promise<PushResult> {
+  console.log('[Push] sendPushToUser called:', { userId, payload });
+
   const supabase = getAdminClient();
 
   // 사용자의 모든 구독 조회
@@ -54,9 +56,12 @@ export async function sendPushToUser(
     .select('*')
     .eq('user_id', userId);
 
+  console.log('[Push] Subscriptions query:', { count: subscriptionsData?.length, error });
+
   const subscriptions = subscriptionsData as PushSubscription[] | null;
 
   if (error || !subscriptions || subscriptions.length === 0) {
+    console.log('[Push] No subscriptions found for user:', userId);
     return { success: 0, failed: 0 };
   }
 
@@ -141,6 +146,8 @@ export async function sendPushToFamilyMembers(
   excludeUserId?: string,
   notificationType: 'new_message' | 'join_request' = 'new_message'
 ): Promise<PushResult> {
+  console.log('[Push] sendPushToFamilyMembers called:', { familyId, excludeUserId, notificationType });
+
   const supabase = getAdminClient();
 
   // 가족 멤버 목록 조회
@@ -149,9 +156,12 @@ export async function sendPushToFamilyMembers(
     .select('user_id')
     .eq('family_id', familyId);
 
+  console.log('[Push] Family members query result:', { membersData, error });
+
   const members = membersData as { user_id: string }[] | null;
 
   if (error || !members || members.length === 0) {
+    console.log('[Push] No family members found or error');
     return { success: 0, failed: 0 };
   }
 
@@ -159,8 +169,13 @@ export async function sendPushToFamilyMembers(
   let totalFailed = 0;
 
   for (const member of members) {
+    console.log('[Push] Processing member:', member.user_id);
+
     // 제외할 사용자 건너뛰기
-    if (excludeUserId && member.user_id === excludeUserId) continue;
+    if (excludeUserId && member.user_id === excludeUserId) {
+      console.log('[Push] Skipping excluded user:', member.user_id);
+      continue;
+    }
 
     // 해당 사용자의 알림 설정 확인
     const { data: settingsData } = await supabase
@@ -171,15 +186,21 @@ export async function sendPushToFamilyMembers(
 
     // 설정이 없으면 기본값(true)으로 간주
     const settings = settingsData || { notify_new_message: true, notify_join_request: true };
+    console.log('[Push] User settings:', { userId: member.user_id, settings });
 
     // 알림 타입에 따라 설정 확인
     const shouldNotify = notificationType === 'new_message'
       ? settings.notify_new_message !== false
       : settings.notify_join_request !== false;
 
-    if (!shouldNotify) continue;
+    if (!shouldNotify) {
+      console.log('[Push] Notification disabled for user:', member.user_id);
+      continue;
+    }
 
+    console.log('[Push] Sending push to user:', member.user_id);
     const result = await sendPushToUser(member.user_id, payload);
+    console.log('[Push] Push result:', result);
     totalSuccess += result.success;
     totalFailed += result.failed;
   }
