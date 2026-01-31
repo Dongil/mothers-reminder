@@ -6,12 +6,25 @@ import type { Database, PushSubscription } from '@/types/database';
 const vapidPublicKey = process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY;
 const vapidPrivateKey = process.env.VAPID_PRIVATE_KEY;
 
+let vapidConfigured = false;
+
 if (vapidPublicKey && vapidPrivateKey) {
-  webpush.setVapidDetails(
-    'mailto:admin@mothers-reminder.com',
-    vapidPublicKey,
-    vapidPrivateKey
-  );
+  try {
+    webpush.setVapidDetails(
+      'mailto:admin@mothers-reminder.com',
+      vapidPublicKey,
+      vapidPrivateKey
+    );
+    vapidConfigured = true;
+    console.log('[Push] VAPID configured successfully');
+  } catch (err) {
+    console.error('[Push] VAPID configuration failed:', err);
+  }
+} else {
+  console.warn('[Push] VAPID keys not set:', {
+    publicKey: !!vapidPublicKey,
+    privateKey: !!vapidPrivateKey,
+  });
 }
 
 // Supabase Admin 클라이언트 (서버 전용)
@@ -47,6 +60,11 @@ export async function sendPushToUser(
   payload: PushPayload
 ): Promise<PushResult> {
   console.log('[Push] sendPushToUser called:', { userId, payload });
+
+  if (!vapidConfigured) {
+    console.error('[Push] Cannot send push: VAPID not configured');
+    return { success: 0, failed: 0 };
+  }
 
   const supabase = getAdminClient();
 
