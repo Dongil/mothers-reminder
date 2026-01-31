@@ -186,62 +186,29 @@ export function useMessages(options: UseMessagesOptions = {}): UseMessagesReturn
     }
   }, [isReady, familyId, date]);
 
-  // 메시지 생성
+  // 메시지 생성 (API 라우트 사용 - 푸시 알림 발송 포함)
   const createMessage = useCallback(async (
     messageData: Omit<MessageInsert, 'author_id' | 'family_id'>
   ): Promise<Message | null> => {
-    if (!isReady || !supabase) {
+    if (!isReady) {
       return null;
     }
     try {
-      // 현재 사용자 정보 가져오기
-      const { data: { session } } = await supabase.auth.getSession();
-      if (!session?.user) {
-        throw new Error('로그인이 필요합니다');
-      }
-      const user = session.user;
+      const response = await fetch('/api/messages', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(messageData),
+      });
 
-      // 활성 가족 ID 가져오기 (family_members에서)
-      const { data: memberDataRaw } = await supabase
-        .from('family_members')
-        .select('family_id')
-        .eq('user_id', user.id)
-        .eq('is_active', true)
-        .single();
-      const memberData = memberDataRaw as { family_id: string } | null;
+      const result = await response.json();
 
-      // family_members에 없으면 users.family_id로 폴백 (하위 호환성)
-      let activeFamilyId: string | undefined = memberData?.family_id;
-      if (!activeFamilyId) {
-        const { data: userData } = await supabase
-          .from('users')
-          .select('family_id')
-          .eq('id', user.id)
-          .single();
-        activeFamilyId = (userData as { family_id: string | null } | null)?.family_id ?? undefined;
+      if (!response.ok) {
+        throw new Error(result.error || '메시지 작성에 실패했습니다');
       }
 
-      if (!activeFamilyId) {
-        throw new Error('활성 가족이 없습니다. 설정에서 가족을 만들거나 참여해주세요.');
-      }
-
-      const insertData = {
-        ...messageData,
-        author_id: user.id,
-        family_id: activeFamilyId,
-      } as MessageInsert;
-
-      const { data, error: insertError } = await supabase
-        .from('messages')
-        .insert(insertData as never)
-        .select()
-        .single();
-
-      if (insertError) {
-        throw insertError;
-      }
-
-      return data as unknown as Message;
+      return result.data as Message;
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : '메시지 작성에 실패했습니다';
       setError(errorMessage);
