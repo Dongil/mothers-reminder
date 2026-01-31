@@ -1,18 +1,35 @@
-const fs = require('fs');
-const path = require('path');
+// Service Worker for Push Notifications
+// Version: 1.0.0
 
-const swPath = path.join(__dirname, '../public/sw.js');
+// Install event
+self.addEventListener('install', (event) => {
+  console.log('[SW] Installing service worker...');
+  self.skipWaiting();
+});
 
-const pushCode = `
+// Activate event
+self.addEventListener('activate', (event) => {
+  console.log('[SW] Service worker activated');
+  event.waitUntil(clients.claim());
+});
 
-// Push notification handlers (added by postbuild)
+// Push notification handler
 self.addEventListener('push', (event) => {
-  if (!event.data) return;
+  console.log('[SW] Push received');
+
+  if (!event.data) {
+    console.log('[SW] No push data');
+    return;
+  }
+
   try {
     const data = event.data.json();
+    console.log('[SW] Push data:', data);
+
     const { title, body, icon, tag, data: notificationData } = data;
+
     const options = {
-      body,
+      body: body || '',
       icon: icon || '/icons/icon.svg',
       badge: '/icons/icon.svg',
       tag: tag || 'default',
@@ -20,53 +37,40 @@ self.addEventListener('push', (event) => {
       vibrate: [200, 100, 200],
       requireInteraction: true,
     };
+
     event.waitUntil(
       self.registration.showNotification(title || '가족 메시지', options)
     );
   } catch (err) {
-    console.error('Push event error:', err);
+    console.error('[SW] Push event error:', err);
   }
 });
 
+// Notification click handler
 self.addEventListener('notificationclick', (event) => {
+  console.log('[SW] Notification clicked');
   event.notification.close();
+
   const urlToOpen = event.notification.data?.url || '/settings';
+
   event.waitUntil(
     clients.matchAll({ type: 'window', includeUncontrolled: true })
       .then((clientList) => {
+        // Focus existing window if found
         for (const client of clientList) {
           if (client.url.includes(urlToOpen) && 'focus' in client) {
             return client.focus();
           }
         }
+        // Open new window
         if (clients.openWindow) {
           return clients.openWindow(urlToOpen);
         }
       })
   );
 });
-`;
 
-try {
-  // sw.js 파일이 존재하는지 확인
-  if (!fs.existsSync(swPath)) {
-    console.log('sw.js not found, skipping push handler injection');
-    process.exit(0);
-  }
-
-  let swContent = fs.readFileSync(swPath, 'utf8');
-
-  // 이미 push 코드가 있는지 확인
-  if (swContent.includes("self.addEventListener('push'")) {
-    console.log('Push handlers already exist in sw.js');
-    process.exit(0);
-  }
-
-  // push 코드 추가
-  swContent += pushCode;
-  fs.writeFileSync(swPath, swContent);
-  console.log('Push handlers added to sw.js successfully');
-} catch (error) {
-  console.error('Error modifying sw.js:', error);
-  process.exit(1);
-}
+// Fetch handler (simple pass-through, no caching)
+self.addEventListener('fetch', (event) => {
+  // Let the browser handle the request normally
+});
