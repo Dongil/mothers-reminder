@@ -187,7 +187,8 @@ export async function POST(request: NextRequest) {
 
     const requester = requesterData as { name: string; nickname: string | null } | null;
 
-    // 가족 관리자들에게 푸시 알림 발송
+    // 가족 관리자들에게 푸시 알림 발송 (알림 설정 확인)
+    let pushResult = null;
     if (requester && data) {
       const requesterName = requester.nickname
         ? `${requester.name}(${requester.nickname})`
@@ -196,19 +197,29 @@ export async function POST(request: NextRequest) {
       const joinRequestData = data as { id: string; family?: { name: string } };
       const familyName = joinRequestData.family?.name || '가족';
 
-      sendPushToFamilyAdmins(body.family_id, {
-        title: '가족 참여 요청',
-        body: `${requesterName}님이 ${familyName} 가족으로 참여 요청이 왔습니다. 설정에서 확인해주세요.`,
-        tag: `join-request-${joinRequestData.id}`,
-        data: {
-          url: '/settings',
-          type: 'join_request',
-          requestId: joinRequestData.id,
-        },
-      }).catch(err => console.error('Push notification error:', err));
+      try {
+        pushResult = await sendPushToFamilyAdmins(
+          body.family_id,
+          {
+            title: '가족 참여 요청',
+            body: `${requesterName}님이 ${familyName} 가족으로 참여 요청이 왔습니다. 설정에서 확인해주세요.`,
+            tag: `join-request-${joinRequestData.id}`,
+            data: {
+              url: '/settings',
+              type: 'join_request',
+              requestId: joinRequestData.id,
+            },
+          },
+          undefined,
+          'join_request'
+        );
+        console.log('[Join Request] Push notification result:', pushResult);
+      } catch (err) {
+        console.error('[Join Request] Push notification error:', err);
+      }
     }
 
-    return NextResponse.json({ data }, { status: 201 });
+    return NextResponse.json({ data, pushResult }, { status: 201 });
   } catch (error) {
     console.error('Join requests POST error:', error);
     return NextResponse.json(

@@ -118,13 +118,16 @@ export async function sendPushToUser(
 }
 
 /**
- * 가족 관리자들에게 푸시 알림 발송
+ * 가족 관리자들에게 푸시 알림 발송 (알림 설정 확인)
  */
 export async function sendPushToFamilyAdmins(
   familyId: string,
   payload: PushPayload,
-  excludeUserId?: string
+  excludeUserId?: string,
+  notificationType: 'new_message' | 'join_request' = 'join_request'
 ): Promise<PushResult> {
+  console.log('[Push] sendPushToFamilyAdmins called:', { familyId, excludeUserId, notificationType });
+
   const supabase = getAdminClient();
 
   // 가족 관리자 목록 조회
@@ -137,6 +140,7 @@ export async function sendPushToFamilyAdmins(
   const admins = adminsData as { user_id: string }[] | null;
 
   if (error || !admins || admins.length === 0) {
+    console.log('[Push] No admins found or error');
     return { success: 0, failed: 0 };
   }
 
@@ -146,6 +150,27 @@ export async function sendPushToFamilyAdmins(
   for (const admin of admins) {
     // 제외할 사용자 건너뛰기
     if (excludeUserId && admin.user_id === excludeUserId) continue;
+
+    // 해당 사용자의 알림 설정 확인
+    const { data: settingsData } = await supabase
+      .from('settings')
+      .select('notify_new_message, notify_join_request')
+      .eq('user_id', admin.user_id)
+      .single();
+
+    // 설정이 없으면 기본값(true)으로 간주
+    const settings = settingsData || { notify_new_message: true, notify_join_request: true };
+    console.log('[Push] Admin settings:', { userId: admin.user_id, settings });
+
+    // 알림 타입에 따라 설정 확인
+    const shouldNotify = notificationType === 'new_message'
+      ? settings.notify_new_message !== false
+      : settings.notify_join_request !== false;
+
+    if (!shouldNotify) {
+      console.log('[Push] Notification disabled for admin:', admin.user_id);
+      continue;
+    }
 
     const result = await sendPushToUser(admin.user_id, payload);
     totalSuccess += result.success;
