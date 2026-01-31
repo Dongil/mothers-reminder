@@ -59,11 +59,12 @@ export async function GET() {
       }
 
       // 6. 푸시 구독 확인
-      const { data: subscriptions, error: subError } = await supabase
+      const { data: subscriptionsData, error: subError } = await supabase
         .from('push_subscriptions')
         .select('id, user_id, created_at')
         .eq('user_id', user.id);
 
+      const subscriptions = subscriptionsData as { id: string; user_id: string; created_at: string }[] | null;
       diagnostics.pushSubscriptions = {
         count: subscriptions?.length || 0,
         subscriptions: subscriptions?.map(s => ({
