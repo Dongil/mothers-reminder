@@ -73,7 +73,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // 사용자의 family_id 가져오기
+    // 사용자의 family_id 가져오기 (users 테이블 또는 settings의 active_family_id)
     const { data: userData } = await supabase
       .from('users')
       .select('*')
@@ -81,7 +81,21 @@ export async function POST(request: NextRequest) {
       .single();
 
     const userRecord = userData as unknown as User | null;
-    if (!userRecord?.family_id) {
+
+    // users.family_id가 없으면 settings.active_family_id 확인
+    let familyId = userRecord?.family_id;
+    if (!familyId) {
+      const { data: settingsData } = await supabase
+        .from('settings')
+        .select('active_family_id')
+        .eq('user_id', user.id)
+        .single();
+
+      const settings = settingsData as { active_family_id: string | null } | null;
+      familyId = settings?.active_family_id || null;
+    }
+
+    if (!familyId) {
       return NextResponse.json(
         { error: '가족 정보가 없습니다' },
         { status: 400 }
@@ -100,7 +114,7 @@ export async function POST(request: NextRequest) {
 
     const messageData: MessageInsert = {
       author_id: user.id,
-      family_id: userRecord.family_id,
+      family_id: familyId,
       content: body.content,
       priority: body.priority || 'normal',
       display_date: body.display_date,
@@ -144,13 +158,13 @@ export async function POST(request: NextRequest) {
         : body.content;
 
       console.log('[Messages API] Sending push notification:', {
-        familyId: userRecord.family_id,
+        familyId: familyId,
         authorId: user.id,
         messageId: messageData.id,
       });
 
       sendPushToFamilyMembers(
-        userRecord.family_id,
+        familyId,
         {
           title: '새 메시지',
           body: contentPreview,

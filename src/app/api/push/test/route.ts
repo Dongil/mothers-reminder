@@ -44,14 +44,42 @@ export async function GET() {
         error: userError?.message || null,
       };
 
-      // 5. 가족 멤버 확인
-      if (userRecord?.family_id) {
+      // 5. settings에서 active_family_id 확인
+      const { data: settingsData, error: settingsError } = await supabase
+        .from('settings')
+        .select('active_family_id')
+        .eq('user_id', user.id)
+        .single();
+
+      const settings = settingsData as { active_family_id: string | null } | null;
+      diagnostics.settings = {
+        activeFamilyId: settings?.active_family_id || null,
+        error: settingsError?.message || null,
+      };
+
+      // 6. family_members에서 이 사용자가 속한 가족 확인
+      const { data: membershipData, error: membershipError } = await supabase
+        .from('family_members')
+        .select('family_id, role')
+        .eq('user_id', user.id);
+
+      const memberships = membershipData as { family_id: string; role: string }[] | null;
+      diagnostics.memberships = {
+        count: memberships?.length || 0,
+        families: memberships || [],
+        error: membershipError?.message || null,
+      };
+
+      // 7. 활성 가족의 멤버 확인
+      const activeFamilyId = settings?.active_family_id || userRecord?.family_id;
+      if (activeFamilyId) {
         const { data: members, error: membersError } = await supabase
           .from('family_members')
           .select('user_id, role')
-          .eq('family_id', userRecord.family_id);
+          .eq('family_id', activeFamilyId);
 
         diagnostics.familyMembers = {
+          familyId: activeFamilyId,
           count: members?.length || 0,
           members: members || [],
           error: membersError?.message || null,
