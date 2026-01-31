@@ -22,6 +22,8 @@ const defaultSettings: SettingsData = {
   volume_day: 80,
   volume_night: 30,
   ui_mode: 'touch',
+  notify_join_request: true,
+  notify_new_message: true,
 };
 
 export function useSettings(): UseSettingsReturn {

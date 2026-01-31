@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
 import type { MessageInsert, User } from '@/types/database';
+import { sendPushToFamilyMembers } from '@/lib/push/send-notification';
 
 // GET: 메시지 목록 조회
 export async function GET(request: NextRequest) {
@@ -133,6 +134,30 @@ export async function POST(request: NextRequest) {
         { error: '메시지 작성에 실패했습니다' },
         { status: 500 }
       );
+    }
+
+    // 가족 멤버들에게 새 메시지 푸시 알림 발송 (작성자 제외)
+    if (data) {
+      const messageData = data as { id: string };
+      const contentPreview = body.content.length > 50
+        ? body.content.substring(0, 50) + '...'
+        : body.content;
+
+      sendPushToFamilyMembers(
+        userRecord.family_id,
+        {
+          title: '새 메시지',
+          body: contentPreview,
+          tag: `new-message-${messageData.id}`,
+          data: {
+            url: '/display',
+            type: 'new_message',
+            messageId: messageData.id,
+          },
+        },
+        user.id,
+        'new_message'
+      ).catch(err => console.error('Push notification error:', err));
     }
 
     return NextResponse.json({ data }, { status: 201 });

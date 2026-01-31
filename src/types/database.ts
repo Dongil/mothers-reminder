@@ -209,6 +209,8 @@ export type Database = {
           volume_day: number;
           volume_night: number;
           ui_mode: 'touch' | 'voice';
+          notify_join_request: boolean;
+          notify_new_message: boolean;
           created_at: string;
           updated_at: string;
         };
@@ -223,6 +225,8 @@ export type Database = {
           volume_day?: number;
           volume_night?: number;
           ui_mode?: 'touch' | 'voice';
+          notify_join_request?: boolean;
+          notify_new_message?: boolean;
           created_at?: string;
           updated_at?: string;
         };
@@ -237,6 +241,8 @@ export type Database = {
           volume_day?: number;
           volume_night?: number;
           ui_mode?: 'touch' | 'voice';
+          notify_join_request?: boolean;
+          notify_new_message?: boolean;
           created_at?: string;
           updated_at?: string;
         };

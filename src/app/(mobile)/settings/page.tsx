@@ -6,6 +6,7 @@ import { ArrowLeft } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useUser } from '@/hooks';
 import { FamilyManagementSection } from '@/components/settings/FamilyManagementSection';
+import { NotificationSettingsSection } from '@/components/settings/NotificationSettingsSection';
 import { TTSSettingsSection } from '@/components/settings/TTSSettingsSection';
 import { DisplaySettingsSection } from '@/components/settings/DisplaySettingsSection';
 import { AccountManagementSection } from '@/components/settings/AccountManagementSection';
@@ -78,6 +79,9 @@ export default function SettingsPage() {
       <main className="p-4 space-y-4 pb-20">
         {/* 가족 관리 */}
         <FamilyManagementSection />
+
+        {/* 알림 설정 */}
+        <NotificationSettingsSection />
 
         {/* TTS 설정 */}
         <TTSSettingsSection />

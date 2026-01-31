@@ -43,6 +43,8 @@ export async function GET() {
           volume_day: 80,
           volume_night: 30,
           ui_mode: 'touch',
+          notify_join_request: true,
+          notify_new_message: true,
         }
       });
     }
@@ -84,6 +86,8 @@ export async function PATCH(request: NextRequest) {
       'volume_day',
       'volume_night',
       'ui_mode',
+      'notify_join_request',
+      'notify_new_message',
     ];
 
     for (const field of allowedFields) {

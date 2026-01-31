@@ -131,3 +131,58 @@ export async function sendPushToFamilyAdmins(
 
   return { success: totalSuccess, failed: totalFailed };
 }
+
+/**
+ * 가족 멤버들에게 푸시 알림 발송 (알림 설정 확인)
+ */
+export async function sendPushToFamilyMembers(
+  familyId: string,
+  payload: PushPayload,
+  excludeUserId?: string,
+  notificationType: 'new_message' | 'join_request' = 'new_message'
+): Promise<PushResult> {
+  const supabase = getAdminClient();
+
+  // 가족 멤버 목록 조회
+  const { data: membersData, error } = await supabase
+    .from('family_members')
+    .select('user_id')
+    .eq('family_id', familyId);
+
+  const members = membersData as { user_id: string }[] | null;
+
+  if (error || !members || members.length === 0) {
+    return { success: 0, failed: 0 };
+  }
+
+  let totalSuccess = 0;
+  let totalFailed = 0;
+
+  for (const member of members) {
+    // 제외할 사용자 건너뛰기
+    if (excludeUserId && member.user_id === excludeUserId) continue;
+
+    // 해당 사용자의 알림 설정 확인
+    const { data: settingsData } = await supabase
+      .from('settings')
+      .select('notify_new_message, notify_join_request')
+      .eq('user_id', member.user_id)
+      .single();
+
+    // 설정이 없으면 기본값(true)으로 간주
+    const settings = settingsData || { notify_new_message: true, notify_join_request: true };
+
+    // 알림 타입에 따라 설정 확인
+    const shouldNotify = notificationType === 'new_message'
+      ? settings.notify_new_message !== false
+      : settings.notify_join_request !== false;
+
+    if (!shouldNotify) continue;
+
+    const result = await sendPushToUser(member.user_id, payload);
+    totalSuccess += result.success;
+    totalFailed += result.failed;
+  }
+
+  return { success: totalSuccess, failed: totalFailed };
+}
