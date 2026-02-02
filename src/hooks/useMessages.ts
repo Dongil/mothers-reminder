@@ -3,6 +3,7 @@
 import { useEffect, useState, useCallback, useMemo } from 'react';
 import { createClient } from '@/lib/supabase/client';
 import type { Message, MessageInsert, MessageUpdate, User, Gender } from '@/types/database';
+import { shouldDisplayOnDate } from '@/lib/repeat-utils';
 
 // 작성자 정보가 포함된 메시지 타입
 export interface MessageWithAuthor extends Message {
@@ -164,9 +165,9 @@ export function useMessages(options: UseMessagesOptions = {}): UseMessagesReturn
       // 날짜 필터 (오늘 표시할 메시지)
       if (date) {
         const dateStr = format(date, 'yyyy-MM-dd');
-        // display_date가 오늘이거나, display_forever가 true인 메시지
+        // display_date가 오늘이거나, display_forever가 true이거나, 반복 메시지인 경우
         query = query.or(
-          `display_date.eq.${dateStr},display_forever.eq.true`
+          `display_date.eq.${dateStr},display_forever.eq.true,repeat_pattern.eq.weekly`
         );
       }
 
@@ -176,7 +177,15 @@ export function useMessages(options: UseMessagesOptions = {}): UseMessagesReturn
         throw fetchError;
       }
 
-      setRawMessages((data as unknown as MessageWithAuthor[]) || []);
+      // 클라이언트에서 반복 메시지 필터링
+      let filteredMessages = (data as unknown as MessageWithAuthor[]) || [];
+      if (date) {
+        filteredMessages = filteredMessages.filter((msg) =>
+          shouldDisplayOnDate(msg, date)
+        );
+      }
+
+      setRawMessages(filteredMessages);
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : '메시지를 불러오는데 실패했습니다';
       setError(errorMessage);
@@ -304,11 +313,10 @@ export function useMessages(options: UseMessagesOptions = {}): UseMessagesReturn
           table: 'messages',
         };
 
-    // 날짜 필터에 맞는지 확인하는 함수
+    // 날짜 필터에 맞는지 확인하는 함수 (반복 메시지 skip_dates 포함)
     const isMessageForDate = (message: Message): boolean => {
       if (!date) return true; // 날짜 필터 없으면 모두 허용
-      const dateStr = format(date, 'yyyy-MM-dd');
-      return message.display_date === dateStr || message.display_forever === true;
+      return shouldDisplayOnDate(message, date);
     };
 
     const channel = supabase
@@ -326,10 +334,13 @@ export function useMessages(options: UseMessagesOptions = {}): UseMessagesReturn
             // 업데이트된 메시지가 날짜 필터에 맞는지 확인
             if (isMessageForDate(updatedMessage)) {
               // 기존에 있으면 업데이트, 없으면 추가 (날짜가 변경되어 필터에 맞게 된 경우)
-              const exists = prev.some((msg) => msg.id === updatedMessage.id);
-              if (exists) {
+              const existingMsg = prev.find((msg) => msg.id === updatedMessage.id);
+              if (existingMsg) {
+                // realtime payload에는 author 정보가 없으므로 기존 author 유지
                 return prev.map((msg) =>
-                  msg.id === updatedMessage.id ? updatedMessage : msg
+                  msg.id === updatedMessage.id
+                    ? { ...updatedMessage, author: existingMsg.author }
+                    : msg
                 );
               } else {
                 return [updatedMessage, ...prev];

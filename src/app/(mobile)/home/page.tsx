@@ -2,10 +2,12 @@
 
 import React, { useMemo, useEffect, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
-import { Plus, MessageSquare, Monitor, Calendar, Settings, Users } from 'lucide-react';
+import { format } from 'date-fns';
+import { Plus, MessageSquare, Monitor, Calendar, Settings, Users, Repeat } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { MessageList } from '@/components/mobile';
 import { useMessages, useDateRefresh, useUser } from '@/hooks';
+import { createClient } from '@/lib/supabase/client';
 import type { MessageWithAuthor } from '@/hooks/useMessages';
 
 const LAST_PAGE_KEY = 'mothers-reminder-last-page';
@@ -54,6 +56,31 @@ export default function MobileHomePage() {
     }
   };
 
+  // 반복 메시지 해당일 숨기기
+  const handleSkipDate = async (message: MessageWithAuthor, date: string) => {
+    const supabase = createClient();
+    if (!supabase) return;
+
+    try {
+      const currentSkipDates = message.repeat_skip_dates || [];
+      if (!currentSkipDates.includes(date)) {
+        const { error } = await supabase
+          .from('messages')
+          .update({ repeat_skip_dates: [...currentSkipDates, date] } as never)
+          .eq('id', message.id);
+
+        if (error) throw error;
+        refreshMessages();
+      }
+    } catch (err) {
+      console.error('Failed to skip date:', err);
+      alert('숨기기에 실패했습니다');
+    }
+  };
+
+  // 오늘 날짜 문자열
+  const todayStr = useMemo(() => format(today, 'yyyy-MM-dd'), [today]);
+
   return (
     <div className="min-h-screen bg-gray-50">
       {/* 헤더 */}
@@ -66,6 +93,15 @@ export default function MobileHomePage() {
             </h1>
           </div>
           <div className="flex items-center gap-1">
+            <Button
+              variant="ghost"
+              size="icon"
+              className="text-white hover:bg-blue-500"
+              onClick={() => router.push('/messages/repeat')}
+              title="반복 메시지"
+            >
+              <Repeat className="w-5 h-5" />
+            </Button>
             <Button
               variant="ghost"
               size="icon"
@@ -134,8 +170,12 @@ export default function MobileHomePage() {
           messages={messages}
           loading={loading}
           currentUserId={user?.id}
+          isAdmin={user?.activeMembership?.role === 'admin'}
+          activeFamilyId={user?.activeFamily?.id}
+          viewingDate={todayStr}
           onEdit={handleEdit}
           onDelete={handleDelete}
+          onSkipDate={handleSkipDate}
           emptyMessage="오늘 표시할 메시지가 없습니다"
         />
       </main>

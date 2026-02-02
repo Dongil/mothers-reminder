@@ -1,19 +1,24 @@
 'use client';
 
 import React from 'react';
-import { Edit2, Trash2, Volume2, Calendar } from 'lucide-react';
+import { Edit2, Trash2, Volume2, Calendar, Repeat, EyeOff } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { cn, getPriorityColor, getPriorityLabel, formatDday } from '@/lib/utils';
+import { isRepeatMessage } from '@/lib/repeat-utils';
 import type { MessageWithAuthor } from '@/hooks/useMessages';
 import type { Priority } from '@/types/database';
 
 interface MessageListProps {
   messages: MessageWithAuthor[];
   currentUserId?: string;
+  isAdmin?: boolean;
+  activeFamilyId?: string;
+  viewingDate?: string; // 현재 보고 있는 날짜 (YYYY-MM-DD)
   onEdit?: (message: MessageWithAuthor) => void;
   onDelete?: (message: MessageWithAuthor) => void;
+  onSkipDate?: (message: MessageWithAuthor, date: string) => void; // 반복 메시지 해당일 숨기기
   loading?: boolean;
   emptyMessage?: string;
 }
@@ -21,8 +26,12 @@ interface MessageListProps {
 export function MessageList({
   messages,
   currentUserId,
+  isAdmin,
+  activeFamilyId,
+  viewingDate,
   onEdit,
   onDelete,
+  onSkipDate,
   loading,
   emptyMessage = '등록된 메시지가 없습니다',
 }: MessageListProps) {
@@ -57,8 +66,12 @@ export function MessageList({
           key={message.id}
           message={message}
           currentUserId={currentUserId}
+          isAdmin={isAdmin}
+          activeFamilyId={activeFamilyId}
+          viewingDate={viewingDate}
           onEdit={onEdit}
           onDelete={onDelete}
+          onSkipDate={onSkipDate}
         />
       ))}
     </div>
@@ -68,21 +81,37 @@ export function MessageList({
 interface MessageListItemProps {
   message: MessageWithAuthor;
   currentUserId?: string;
+  isAdmin?: boolean;
+  activeFamilyId?: string;
+  viewingDate?: string;
   onEdit?: (message: MessageWithAuthor) => void;
   onDelete?: (message: MessageWithAuthor) => void;
+  onSkipDate?: (message: MessageWithAuthor, date: string) => void;
 }
 
-function MessageListItem({ message, currentUserId, onEdit, onDelete }: MessageListItemProps) {
+function MessageListItem({ message, currentUserId, isAdmin, activeFamilyId, viewingDate, onEdit, onDelete, onSkipDate }: MessageListItemProps) {
   const priorityColor = getPriorityColor(message.priority as Priority);
   const priorityLabel = getPriorityLabel(message.priority as Priority);
   const isAuthor = currentUserId && message.author_id === currentUserId;
+  const canModify = isAuthor || (isAdmin && message.family_id === activeFamilyId);
+  const isRepeat = isRepeatMessage(message);
 
   const handleEdit = () => {
-    if (onEdit && isAuthor) onEdit(message);
+    // 반복 메시지는 수정 불가 (반복 메시지 리스트에서만 수정)
+    if (isRepeat) return;
+    if (onEdit && canModify) onEdit(message);
   };
 
   const handleDelete = () => {
-    if (onDelete && isAuthor) {
+    if (!canModify) return;
+
+    if (isRepeat && onSkipDate && viewingDate) {
+      // 반복 메시지: 해당일만 숨기기
+      if (window.confirm('이 날짜에 메시지를 숨기시겠습니까?\n(반복 메시지 자체는 삭제되지 않습니다)')) {
+        onSkipDate(message, viewingDate);
+      }
+    } else if (onDelete) {
+      // 일반 메시지: 삭제
       if (window.confirm('이 메시지를 삭제하시겠습니까?')) {
         onDelete(message);
       }
@@ -100,6 +129,13 @@ function MessageListItem({ message, currentUserId, onEdit, onDelete }: MessageLi
           >
             {priorityLabel}
           </Badge>
+
+          {isRepeat && (
+            <Badge variant="outline" size="sm" className="gap-1 bg-purple-50 text-purple-700 border-purple-200">
+              <Repeat className="w-3 h-3" />
+              반복
+            </Badge>
+          )}
 
           {message.tts_enabled && (
             <Badge variant="outline" size="sm" className="gap-1">
@@ -141,33 +177,35 @@ function MessageListItem({ message, currentUserId, onEdit, onDelete }: MessageLi
           </div>
 
           <div className="flex items-center gap-2">
-            {onEdit && (
+            {/* 수정 버튼: 반복 메시지는 숨김 */}
+            {onEdit && !isRepeat && (
               <Button
                 variant="ghost"
                 size="sm"
                 onClick={handleEdit}
-                disabled={!isAuthor}
+                disabled={!canModify}
                 className={cn(
-                  isAuthor ? "text-gray-500 hover:text-blue-600" : "text-gray-300 cursor-not-allowed"
+                  canModify ? "text-gray-500 hover:text-blue-600" : "text-gray-300 cursor-not-allowed"
                 )}
-                title={isAuthor ? "수정" : "본인 메시지만 수정 가능"}
+                title={canModify ? "수정" : "수정 권한이 없습니다"}
               >
                 <Edit2 className="w-4 h-4" />
               </Button>
             )}
 
-            {onDelete && (
+            {/* 삭제/숨기기 버튼 */}
+            {(onDelete || (isRepeat && onSkipDate)) && (
               <Button
                 variant="ghost"
                 size="sm"
                 onClick={handleDelete}
-                disabled={!isAuthor}
+                disabled={!canModify}
                 className={cn(
-                  isAuthor ? "text-gray-500 hover:text-red-600" : "text-gray-300 cursor-not-allowed"
+                  canModify ? "text-gray-500 hover:text-red-600" : "text-gray-300 cursor-not-allowed"
                 )}
-                title={isAuthor ? "삭제" : "본인 메시지만 삭제 가능"}
+                title={isRepeat ? "이 날짜에 숨기기" : (canModify ? "삭제" : "삭제 권한이 없습니다")}
               >
-                <Trash2 className="w-4 h-4" />
+                {isRepeat ? <EyeOff className="w-4 h-4" /> : <Trash2 className="w-4 h-4" />}
               </Button>
             )}
           </div>

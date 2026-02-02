@@ -6,6 +6,26 @@ interface RouteParams {
   params: Promise<{ id: string }>;
 }
 
+// 메시지 수정/삭제 권한 확인 헬퍼
+async function canModifyMessage(
+  supabase: Awaited<ReturnType<typeof createClient>>,
+  userId: string,
+  message: Message
+): Promise<boolean> {
+  // 작성자는 항상 가능
+  if (message.author_id === userId) return true;
+
+  // 같은 가족의 관리자인지 확인
+  const { data: membership } = await supabase
+    .from('family_members')
+    .select('role')
+    .eq('user_id', userId)
+    .eq('family_id', message.family_id)
+    .single();
+
+  return (membership as { role: string } | null)?.role === 'admin';
+}
+
 // GET: 단일 메시지 조회
 export async function GET(
   request: NextRequest,
@@ -86,9 +106,10 @@ export async function PATCH(
       );
     }
 
-    // 본인 메시지인지 확인
+    // 권한 확인 (본인 메시지 또는 가족 관리자)
     const existingMessage = existingData as unknown as Message;
-    if (existingMessage.author_id !== user.id) {
+    const hasPermission = await canModifyMessage(supabase, user.id, existingMessage);
+    if (!hasPermission) {
       return NextResponse.json(
         { error: '수정 권한이 없습니다' },
         { status: 403 }
@@ -114,6 +135,9 @@ export async function PATCH(
       ...(body.repeat_month_day !== undefined && { repeat_month_day: body.repeat_month_day }),
       ...(body.repeat_start !== undefined && { repeat_start: body.repeat_start }),
       ...(body.repeat_end !== undefined && { repeat_end: body.repeat_end }),
+      ...(body.repeat_name !== undefined && { repeat_name: body.repeat_name }),
+      ...(body.repeat_enabled !== undefined && { repeat_enabled: body.repeat_enabled }),
+      ...(body.repeat_skip_dates !== undefined && { repeat_skip_dates: body.repeat_skip_dates }),
       ...(body.is_dday !== undefined && { is_dday: body.is_dday }),
       ...(body.dday_date !== undefined && { dday_date: body.dday_date }),
       ...(body.dday_label !== undefined && { dday_label: body.dday_label }),
@@ -177,9 +201,10 @@ export async function DELETE(
       );
     }
 
-    // 본인 메시지인지 확인
+    // 권한 확인 (본인 메시지 또는 가족 관리자)
     const existingMessage = existingData as unknown as Message;
-    if (existingMessage.author_id !== user.id) {
+    const hasPermission = await canModifyMessage(supabase, user.id, existingMessage);
+    if (!hasPermission) {
       return NextResponse.json(
         { error: '삭제 권한이 없습니다' },
         { status: 403 }

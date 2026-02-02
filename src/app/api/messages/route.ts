@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
-import type { MessageInsert, User } from '@/types/database';
+import type { MessageInsert } from '@/types/database';
 import { sendPushToFamilyMembers } from '@/lib/push/send-notification';
 
 // GET: 메시지 목록 조회
@@ -73,32 +73,18 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // 사용자의 family_id 가져오기 (users 테이블 또는 settings의 active_family_id)
-    const { data: userData } = await supabase
-      .from('users')
-      .select('*')
-      .eq('id', user.id)
+    // 항상 family_members에서 is_active=true인 가족 사용
+    const { data: activeMembership } = await supabase
+      .from('family_members')
+      .select('family_id')
+      .eq('user_id', user.id)
+      .eq('is_active', true)
       .single();
 
-    const userRecord = userData as unknown as User | null;
-
-    // users.family_id가 없으면 family_members에서 첫 번째 가족 사용
-    let familyId = userRecord?.family_id;
-    if (!familyId) {
-      const { data: membershipData } = await supabase
-        .from('family_members')
-        .select('family_id')
-        .eq('user_id', user.id)
-        .limit(1)
-        .single();
-
-      const membership = membershipData as { family_id: string } | null;
-      familyId = membership?.family_id || null;
-    }
-
+    const familyId = (activeMembership as { family_id: string } | null)?.family_id;
     if (!familyId) {
       return NextResponse.json(
-        { error: '가족 정보가 없습니다' },
+        { error: '활성 가족이 없습니다' },
         { status: 400 }
       );
     }
@@ -119,6 +105,7 @@ export async function POST(request: NextRequest) {
       content: body.content,
       priority: body.priority || 'normal',
       display_date: body.display_date,
+      display_time: body.display_time ?? null,
       display_duration: body.display_duration || 1,
       display_forever: body.display_forever || false,
       photo_url: body.photo_url || null,
@@ -132,6 +119,9 @@ export async function POST(request: NextRequest) {
       repeat_month_day: body.repeat_month_day || null,
       repeat_start: body.repeat_start || null,
       repeat_end: body.repeat_end || null,
+      repeat_name: body.repeat_name || null,
+      repeat_enabled: body.repeat_enabled ?? true,
+      repeat_skip_dates: body.repeat_skip_dates || null,
       is_dday: body.is_dday || false,
       dday_date: body.dday_date || null,
       dday_label: body.dday_label || null,

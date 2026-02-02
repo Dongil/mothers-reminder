@@ -4,12 +4,26 @@ import React, { useState, useMemo } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
-import { Plus, X, Volume2, Clock } from 'lucide-react';
+import { Plus, X, Volume2, Clock, Repeat } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
 import { cn, getTodayString, calculateTimeOffset } from '@/lib/utils';
+import { WeekdaySelector } from './WeekdaySelector';
+
+// 폼 데이터 타입
+export interface MessageFormData {
+  content: string;
+  priority: 'normal' | 'important' | 'urgent';
+  display_date: string;
+  display_time: string | null;
+  tts_enabled: boolean;
+  tts_times: string[];
+  repeat_enabled: boolean;
+  repeat_weekdays: number[];
+  repeat_name: string | null;
+}
 
 // 폼 스키마
 const messageSchema = z.object({
@@ -22,9 +36,11 @@ const messageSchema = z.object({
   display_time: z.string().nullable(),
   tts_enabled: z.boolean(),
   tts_times: z.array(z.string()),
+  // 반복 설정
+  repeat_enabled: z.boolean(),
+  repeat_weekdays: z.array(z.number()),
+  repeat_name: z.string().nullable(),
 });
-
-type MessageFormData = z.infer<typeof messageSchema>;
 
 interface MessageFormProps {
   onSubmit: (data: MessageFormData) => Promise<void>;
@@ -53,6 +69,16 @@ export function MessageForm({ onSubmit, initialData, isLoading }: MessageFormPro
   const [isAllDay, setIsAllDay] = useState(
     initialData ? initialData.display_time === null : false
   );
+  // 반복 설정 상태
+  const [repeatEnabled, setRepeatEnabled] = useState(
+    initialData?.repeat_enabled ?? false
+  );
+  const [repeatWeekdays, setRepeatWeekdays] = useState<number[]>(
+    initialData?.repeat_weekdays || []
+  );
+  const [repeatName, setRepeatName] = useState(
+    initialData?.repeat_name || ''
+  );
 
   const {
     register,
@@ -70,6 +96,9 @@ export function MessageForm({ onSubmit, initialData, isLoading }: MessageFormPro
       display_time: initialData ? initialData.display_time : '09:00',
       tts_enabled: initialData?.tts_enabled ?? true,
       tts_times: initialData?.tts_times || [],
+      repeat_enabled: initialData?.repeat_enabled ?? false,
+      repeat_weekdays: initialData?.repeat_weekdays || [],
+      repeat_name: initialData?.repeat_name || null,
     },
   });
 
@@ -123,11 +152,29 @@ export function MessageForm({ onSubmit, initialData, isLoading }: MessageFormPro
     }
   };
 
+  const handleToggleRepeat = () => {
+    const newValue = !repeatEnabled;
+    setRepeatEnabled(newValue);
+    setValue('repeat_enabled', newValue);
+    if (!newValue) {
+      setRepeatWeekdays([]);
+      setValue('repeat_weekdays', []);
+    }
+  };
+
+  const handleWeekdaysChange = (days: number[]) => {
+    setRepeatWeekdays(days);
+    setValue('repeat_weekdays', days);
+  };
+
   const onFormSubmit = async (data: MessageFormData) => {
     await onSubmit({
       ...data,
       display_time: isAllDay ? null : data.display_time,
       tts_times: ttsTimes,
+      repeat_enabled: repeatEnabled,
+      repeat_weekdays: repeatWeekdays,
+      repeat_name: repeatEnabled && repeatName.trim() ? repeatName.trim() : null,
     });
   };
 
@@ -233,6 +280,59 @@ export function MessageForm({ onSubmit, initialData, isLoading }: MessageFormPro
           <p className="text-sm text-gray-500">
             {isAllDay ? '하루 종일 표시됩니다' : '지정한 시간에 상단에 표시됩니다'}
           </p>
+        </div>
+
+        {/* 반복 설정 */}
+        <div className="space-y-4 p-4 bg-purple-50 rounded-lg border border-purple-200">
+          <div className="flex items-center justify-between">
+            <Label className="text-base font-semibold text-gray-900 flex items-center gap-2">
+              <Repeat className="w-5 h-5 text-purple-600" />
+              반복
+            </Label>
+            <label className="relative inline-flex items-center cursor-pointer">
+              <input
+                type="checkbox"
+                className="sr-only peer"
+                checked={repeatEnabled}
+                onChange={handleToggleRepeat}
+              />
+              <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-purple-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-purple-600"></div>
+            </label>
+          </div>
+
+          {repeatEnabled && (
+            <div className="space-y-4">
+              {/* 요일 선택 */}
+              <div className="space-y-2">
+                <Label className="text-sm font-medium text-gray-700">반복 요일</Label>
+                <WeekdaySelector
+                  selectedDays={repeatWeekdays}
+                  onChange={handleWeekdaysChange}
+                />
+                {repeatWeekdays.length === 0 && (
+                  <p className="text-sm text-red-500 text-center">반복할 요일을 선택해주세요</p>
+                )}
+              </div>
+
+              {/* 반복 이름 */}
+              <div className="space-y-2">
+                <Label htmlFor="repeat_name" className="text-sm font-medium text-gray-700">
+                  반복 이름 (선택)
+                </Label>
+                <Input
+                  id="repeat_name"
+                  type="text"
+                  placeholder="예: 아침약 먹기"
+                  value={repeatName}
+                  onChange={(e) => setRepeatName(e.target.value)}
+                  className="text-gray-900"
+                />
+                <p className="text-xs text-gray-500">
+                  반복 메시지 리스트에서 구분하기 쉽도록 이름을 지정하세요
+                </p>
+              </div>
+            </div>
+          )}
         </div>
       </div>
 

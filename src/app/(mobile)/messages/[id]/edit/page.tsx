@@ -5,8 +5,10 @@ import { useRouter } from 'next/navigation';
 import { ArrowLeft } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { MessageForm } from '@/components/mobile';
+import type { MessageFormData } from '@/components/mobile';
 import { createClient } from '@/lib/supabase/client';
 import type { Message } from '@/types/database';
+import { isRepeatMessage } from '@/lib/repeat-utils';
 
 interface EditMessagePageProps {
   params: Promise<{ id: string }>;
@@ -47,20 +49,15 @@ export default function EditMessagePage({ params }: EditMessagePageProps) {
     fetchMessage();
   }, [id, router]);
 
-  const handleSubmit = async (data: {
-    content: string;
-    priority: 'normal' | 'important' | 'urgent';
-    display_date: string;
-    display_time: string | null;
-    tts_enabled: boolean;
-    tts_times: string[];
-  }) => {
+  const handleSubmit = async (data: MessageFormData) => {
     if (!supabase) {
       alert('서비스 연결에 실패했습니다');
       return;
     }
     setIsLoading(true);
     try {
+      const isRepeat = data.repeat_enabled && data.repeat_weekdays.length > 0;
+
       const { error } = await supabase
         .from('messages')
         .update({
@@ -70,6 +67,10 @@ export default function EditMessagePage({ params }: EditMessagePageProps) {
           display_time: data.display_time,
           tts_enabled: data.tts_enabled,
           tts_times: data.tts_times,
+          repeat_pattern: isRepeat ? 'weekly' : 'none',
+          repeat_weekdays: isRepeat ? data.repeat_weekdays : null,
+          repeat_name: isRepeat ? data.repeat_name : null,
+          repeat_enabled: isRepeat,
           updated_at: new Date().toISOString(),
         } as never)
         .eq('id', id);
@@ -78,7 +79,12 @@ export default function EditMessagePage({ params }: EditMessagePageProps) {
         throw error;
       }
 
-      router.push('/home');
+      // 반복 메시지면 /messages/repeat으로, 아니면 /home으로
+      if (isRepeat) {
+        router.push('/messages/repeat');
+      } else {
+        router.push('/home');
+      }
     } catch (error) {
       console.error('Failed to update message:', error);
       alert('메시지 수정에 실패했습니다');
@@ -128,6 +134,9 @@ export default function EditMessagePage({ params }: EditMessagePageProps) {
             display_time: message.display_time,
             tts_enabled: message.tts_enabled,
             tts_times: message.tts_times || [],
+            repeat_enabled: isRepeatMessage(message),
+            repeat_weekdays: message.repeat_weekdays || [],
+            repeat_name: message.repeat_name,
           }}
         />
       </main>

@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
 import { ChevronLeft, ChevronRight, ArrowLeft, List, Home } from 'lucide-react';
 import {
@@ -11,6 +11,7 @@ import {
   endOfWeek,
   addMonths,
   subMonths,
+  addWeeks,
   eachDayOfInterval,
   isSameMonth,
   isSameDay,
@@ -20,12 +21,9 @@ import { ko } from 'date-fns/locale';
 import { Button } from '@/components/ui/button';
 import { createClient } from '@/lib/supabase/client';
 import { cn, getTodayString } from '@/lib/utils';
+import { shouldDisplayOnDate } from '@/lib/repeat-utils';
 import { useUser } from '@/hooks';
-
-interface MessageCount {
-  display_date: string;
-  count: number;
-}
+import type { Message } from '@/types/database';
 
 export default function CalendarPage() {
   const router = useRouter();
@@ -37,7 +35,11 @@ export default function CalendarPage() {
 
   const today = parseISO(getTodayString());
 
-  // 월별 메시지 개수 조회
+  // 반복 메시지 표시 범위: 현재 주 시작 ~ 다음 주 끝 (일~토 기준)
+  const repeatRangeStart = useMemo(() => startOfWeek(today, { weekStartsOn: 0 }), [today]);
+  const repeatRangeEnd = useMemo(() => endOfWeek(addWeeks(today, 1), { weekStartsOn: 0 }), [today]);
+
+  // 월별 메시지 개수 조회 (반복 메시지 포함)
   const fetchMessageCounts = useCallback(async () => {
     if (!supabase || !user?.activeFamily?.id) return;
 
@@ -46,19 +48,50 @@ export default function CalendarPage() {
       const monthStart = format(startOfMonth(currentMonth), 'yyyy-MM-dd');
       const monthEnd = format(endOfMonth(currentMonth), 'yyyy-MM-dd');
 
+      // 일반 메시지 + 반복 메시지 모두 조회
       const { data, error } = await supabase
         .from('messages')
-        .select('display_date')
+        .select('*')
         .eq('family_id', user.activeFamily.id)
-        .gte('display_date', monthStart)
-        .lte('display_date', monthEnd);
+        .or(`display_date.gte.${monthStart},repeat_pattern.eq.weekly`);
 
       if (error) throw error;
 
+      const messages = (data || []) as Message[];
+
+      // 달력에 표시할 날짜 범위
+      const calendarStart = startOfWeek(startOfMonth(currentMonth), { weekStartsOn: 0 });
+      const calendarEnd = endOfWeek(endOfMonth(currentMonth), { weekStartsOn: 0 });
+      const calendarDays = eachDayOfInterval({ start: calendarStart, end: calendarEnd });
+
       // 날짜별 개수 집계
       const counts: Record<string, number> = {};
-      (data || []).forEach((item: { display_date: string }) => {
-        counts[item.display_date] = (counts[item.display_date] || 0) + 1;
+
+      calendarDays.forEach((date) => {
+        const dateStr = format(date, 'yyyy-MM-dd');
+        let count = 0;
+
+        messages.forEach((msg) => {
+          const isRepeat = msg.repeat_pattern === 'weekly' && msg.repeat_weekdays && msg.repeat_weekdays.length > 0;
+
+          if (isRepeat) {
+            // 반복 메시지: 현재 주 ~ 다음 주 범위 내에서만 표시
+            if (date >= repeatRangeStart && date <= repeatRangeEnd) {
+              if (shouldDisplayOnDate(msg, date)) {
+                count++;
+              }
+            }
+          } else {
+            // 일반 메시지: 정확한 날짜에만 표시
+            if (shouldDisplayOnDate(msg, date)) {
+              count++;
+            }
+          }
+        });
+
+        if (count > 0) {
+          counts[dateStr] = count;
+        }
       });
 
       setMessageCounts(counts);
@@ -67,7 +100,7 @@ export default function CalendarPage() {
     } finally {
       setLoading(false);
     }
-  }, [supabase, currentMonth, user?.activeFamily?.id]);
+  }, [supabase, currentMonth, user?.activeFamily?.id, repeatRangeStart, repeatRangeEnd]);
 
   useEffect(() => {
     fetchMessageCounts();

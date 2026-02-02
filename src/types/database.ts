@@ -104,6 +104,9 @@ export type Database = {
           repeat_month_day: number | null;
           repeat_start: string | null;
           repeat_end: string | null;
+          repeat_name: string | null;
+          repeat_enabled: boolean;
+          repeat_skip_dates: string[] | null;
           is_dday: boolean;
           dday_date: string | null;
           dday_label: string | null;
@@ -131,6 +134,9 @@ export type Database = {
           repeat_month_day?: number | null;
           repeat_start?: string | null;
           repeat_end?: string | null;
+          repeat_name?: string | null;
+          repeat_enabled?: boolean;
+          repeat_skip_dates?: string[] | null;
           is_dday?: boolean;
           dday_date?: string | null;
           dday_label?: string | null;
@@ -158,6 +164,9 @@ export type Database = {
           repeat_month_day?: number | null;
           repeat_start?: string | null;
           repeat_end?: string | null;
+          repeat_name?: string | null;
+          repeat_enabled?: boolean;
+          repeat_skip_dates?: string[] | null;
           is_dday?: boolean;
           dday_date?: string | null;
           dday_label?: string | null;

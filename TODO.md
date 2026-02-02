@@ -4,7 +4,7 @@
 
 **시작일**: 2026년 1월 13일
 **목표**: MVP 완성
-**현재 상태**: v1.5.4 UI 개선 (2026년 1월 31일)
+**현재 상태**: v1.5.5 반복 메시지 시스템 (2026년 2월 2일)
 
 ---
 
@@ -535,6 +535,57 @@
 
 ---
 
+## v1.5.5: 반복 메시지 시스템 및 버그 수정 ✅ (2026년 2월 2일)
+
+### DB 스키마 변경
+- [x] `messages` 테이블에 `repeat_name`, `repeat_enabled`, `repeat_skip_dates` 필드 추가
+- [x] 마이그레이션 파일 (`v1.5.5_001_repeat_message_fields.sql`)
+
+### 반복 메시지 시스템
+- [x] 주간 반복 지원 (요일 선택)
+- [x] `repeat-utils.ts` 유틸리티 생성
+  - `shouldDisplayOnDate()` - 날짜별 메시지 표시 판단
+  - `isRepeatMessage()` - 반복 메시지 여부 확인
+  - `formatWeekdays()` - 요일 포맷팅
+  - `getNextActiveDate()` - 다음 활성 날짜 계산
+- [x] `WeekdaySelector.tsx` 컴포넌트 - 요일 선택 UI (원형 버튼 7개)
+- [x] `MessageForm.tsx` 반복 설정 섹션 추가
+  - 반복 토글, 요일 선택, 반복 이름 입력
+- [x] `/messages/repeat` 페이지 - 반복 메시지 관리
+  - 갤럭시 알람 스타일 리스트
+  - 온/오프 토글
+  - "오늘만 건너뛰기" / "완전히 끄기" 옵션
+- [x] `RepeatMessageList.tsx` 컴포넌트
+
+### 반복 메시지 표시 로직
+- [x] `/home`, `/display` - 반복 메시지 표시 (shouldDisplayOnDate 적용)
+- [x] `/messages/calendar` - 반복 메시지 개수 표시 (현재주~다음주만)
+- [x] `/messages/manage` - 반복 메시지 필터링 (현재주~다음주만)
+- [x] Realtime UPDATE 이벤트에서 skip_dates 반영
+
+### 반복 메시지 삭제/숨기기
+- [x] `/home`, `/messages/manage`에서 반복 메시지 수정 버튼 숨김
+- [x] 삭제 대신 "이 날짜에 숨기기" 기능 (EyeOff 아이콘)
+- [x] `/messages/repeat`에서만 완전 삭제 가능
+
+### 버그 수정
+- [x] 활성 가족 변경 후 새 메시지가 이전 가족으로 추가되는 문제 수정
+  - `family_members.is_active=true` 기준으로 가족 ID 조회
+- [x] `display_time` 필드 저장 안되는 문제 수정
+- [x] Realtime UPDATE 시 author 정보 유실 문제 수정
+
+### 관리자 권한 확장
+- [x] 가족 관리자가 같은 가족 멤버의 메시지도 수정/삭제 가능
+- [x] `canModifyMessage()` 헬퍼 함수 추가
+- [x] `/home`, `/messages/manage` UI에 권한 체크 적용
+
+### 네비게이션 개선
+- [x] `/home` 헤더에 반복 메시지 아이콘 추가
+- [x] FAB "메시지 추가" → `/messages/new`로 이동
+- [x] `/messages/new` 저장 후 리다이렉트 분기 (반복→repeat, 일반→home)
+
+---
+
 ## 향후 로드맵 (MVP 이후)
 
 ### v1.6 - (예약됨)
@@ -574,5 +625,5 @@
 ---
 
 **작성일**: 2026년 1월 13일
-**최종 업데이트**: 2026년 1월 31일
-**버전**: 1.5.4 (UI 개선)
+**최종 업데이트**: 2026년 2월 2일
+**버전**: 1.5.5 (반복 메시지 시스템)

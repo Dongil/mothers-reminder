@@ -7,6 +7,7 @@ import { useRouter } from 'next/navigation';
 import { ArrowLeft } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { MessageForm } from '@/components/mobile';
+import type { MessageFormData } from '@/components/mobile';
 import { useMessages } from '@/hooks';
 
 export default function NewMessagePage() {
@@ -14,16 +15,12 @@ export default function NewMessagePage() {
   const { createMessage } = useMessages();
   const [isLoading, setIsLoading] = useState(false);
 
-  const handleSubmit = async (data: {
-    content: string;
-    priority: 'normal' | 'important' | 'urgent';
-    display_date: string;
-    display_time: string | null;
-    tts_enabled: boolean;
-    tts_times: string[];
-  }) => {
+  const handleSubmit = async (data: MessageFormData) => {
     setIsLoading(true);
     try {
+      // 반복 메시지인 경우 repeat_pattern과 관련 필드 설정
+      const isRepeat = data.repeat_enabled && data.repeat_weekdays.length > 0;
+
       const result = await createMessage({
         content: data.content,
         priority: data.priority,
@@ -31,10 +28,20 @@ export default function NewMessagePage() {
         display_time: data.display_time,
         tts_enabled: data.tts_enabled,
         tts_times: data.tts_times,
+        // 반복 메시지 필드
+        repeat_pattern: isRepeat ? 'weekly' : 'none',
+        repeat_weekdays: isRepeat ? data.repeat_weekdays : null,
+        repeat_name: isRepeat ? data.repeat_name : null,
+        repeat_enabled: isRepeat,
       });
 
       if (result) {
-        router.push('/home');
+        // 반복 설정이 있으면 /messages/repeat으로, 없으면 /home으로
+        if (isRepeat) {
+          router.push('/messages/repeat');
+        } else {
+          router.push('/home');
+        }
       } else {
         alert('메시지 작성에 실패했습니다');
       }
@@ -52,7 +59,7 @@ export default function NewMessagePage() {
             variant="ghost"
             size="icon"
             className="text-white hover:bg-blue-500"
-            onClick={() => router.back()}
+            onClick={() => router.push('/home')}
           >
             <ArrowLeft className="w-5 h-5" />
           </Button>
