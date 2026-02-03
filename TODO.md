@@ -646,6 +646,12 @@
   - 전체 메뉴얼/간단 가이드 링크
 - [x] `/settings` 페이지에 추가 (DisplaySettingsSection 아래)
 
+### UI 개선
+- [x] 사용 가이드 섹션 시인성 개선
+  - 제목 색상 진하게 (`text-gray-900`)
+  - 아이콘 색상 파란색 강조 (`text-blue-600`)
+  - 설명 텍스트 가독성 향상 (`text-gray-700`, `leading-relaxed`)
+
 ---
 
 ## 향후 로드맵 (MVP 이후)

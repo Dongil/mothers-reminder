@@ -27,6 +27,11 @@
   - `usePushNotification.ts`: [Push] 디버그 로그
   - `middleware.ts`: [Admin Check] 로그
 
+#### Fixed (수정)
+- 설정 페이지 사용 가이드 섹션 시인성 개선
+  - 제목/아이콘 색상 강조 (`text-gray-900`, `text-blue-600`)
+  - 설명 텍스트 가독성 향상 (`text-gray-700`, `leading-relaxed`)
+
 ---
 
 ## [1.5.6] - 2026-02-03
