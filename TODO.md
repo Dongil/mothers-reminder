@@ -4,7 +4,7 @@
 
 **시작일**: 2026년 1월 13일
 **목표**: MVP 완성
-**현재 상태**: v1.5.6 UI 수정 (2026년 2월 3일)
+**현재 상태**: v1.6.0 프로젝트 정리 및 문서화 (2026년 2월 3일)
 
 ---
 
@@ -609,10 +609,46 @@
 
 ---
 
-## 향후 로드맵 (MVP 이후)
+## v1.6.0: 프로젝트 정리 및 문서화 ✅ (2026년 2월 3일)
 
-### v1.6 - (예약됨)
-- [ ] 추가 업데이트 예정
+### 코드 정리
+- [x] 불필요한 console.log 제거 (~50개 디버그 로그)
+  - `src/lib/push/send-notification.ts` - 27개 [Push] 로그 제거
+  - `src/hooks/usePushNotification.ts` - 14개 [Push] 로그 제거
+  - `src/lib/supabase/middleware.ts` - 6개 [Admin Check] 로그 제거
+  - 모든 `console.error`는 유지 (에러 처리용)
+
+### 코드 문서화 (JSDoc 주석)
+- [x] `src/hooks/useMessages.ts` - 메시지 CRUD 및 Realtime 구독
+- [x] `src/hooks/useUser.ts` - 사용자 인증 및 활성 가족 관리
+- [x] `src/hooks/useNotifications.ts` - TTS 스케줄링 및 야간 모드
+- [x] `src/lib/repeat-utils.ts` - 반복 메시지 유틸리티
+- [x] `src/lib/push/send-notification.ts` - 웹 푸시 알림 발송
+- [x] `src/app/(tablet)/display/page.tsx` - 디스플레이 화면
+
+### 프로젝트 문서 작성
+- [x] `ARCHITECTURE.md` - 시스템 아키텍처, 폴더 구조, 데이터 흐름
+- [x] `CHANGELOG.md` - 버전별 변경 이력 (v1.0.0~v1.6.0)
+- [x] `DEPLOYMENT.md` - Vercel + Supabase 배포 가이드
+- [x] `README.md` 업데이트 - 프로젝트 소개, 주요 기능, 기술 스택
+
+### 사용자 메뉴얼 작성
+- [x] `docs/USER-MANUAL.md` - 전체 사용자 가이드 (~10페이지)
+  - 소개 및 설치, 회원가입/로그인, 가족 관리
+  - 메시지 작성, 반복 메시지, 디스플레이
+  - TTS/알림 설정, FAQ/문제 해결
+- [x] `docs/QUICK-GUIDE.md` - 간단 가이드 (1페이지)
+
+### 설정 페이지 가이드 섹션
+- [x] `QuickGuideSection.tsx` 컴포넌트 생성
+  - 아코디언 UI (접기/펼치기)
+  - 5가지 핵심 기능 안내 (메시지, 디스플레이, 음성, 반복, 푸시)
+  - 전체 메뉴얼/간단 가이드 링크
+- [x] `/settings` 페이지에 추가 (DisplaySettingsSection 아래)
+
+---
+
+## 향후 로드맵 (MVP 이후)
 
 ### v2.0 - 추가 기능
 - [ ] ~~FCM 푸시 알림~~ (v1.5.2에서 Web Push로 구현)
@@ -649,4 +685,4 @@
 
 **작성일**: 2026년 1월 13일
 **최종 업데이트**: 2026년 2월 3일
-**버전**: 1.5.6 (UI 수정)
+**버전**: 1.6.0 (프로젝트 정리 및 문서화)

@@ -9,6 +9,7 @@ import { FamilyManagementSection } from '@/components/settings/FamilyManagementS
 import { NotificationSettingsSection } from '@/components/settings/NotificationSettingsSection';
 import { TTSSettingsSection } from '@/components/settings/TTSSettingsSection';
 import { DisplaySettingsSection } from '@/components/settings/DisplaySettingsSection';
+import { QuickGuideSection } from '@/components/settings/QuickGuideSection';
 import { AccountManagementSection } from '@/components/settings/AccountManagementSection';
 
 const LAST_PAGE_KEY = 'mothers-reminder-last-page';
@@ -88,6 +89,9 @@ export default function SettingsPage() {
 
         {/* 디스플레이 설정 */}
         <DisplaySettingsSection />
+
+        {/* 사용 가이드 */}
+        <QuickGuideSection />
 
         {/* 계정 관리 */}
         <AccountManagementSection />

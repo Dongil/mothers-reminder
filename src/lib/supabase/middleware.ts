@@ -47,13 +47,10 @@ export async function updateSession(request: NextRequest) {
   if (pathname.startsWith('/admin')) {
     // 로그인 안된 경우
     if (!user) {
-      console.log('[Admin Check] No user found, redirecting to login');
       const loginUrl = new URL('/login', request.url);
       loginUrl.searchParams.set('redirect', pathname);
       return NextResponse.redirect(loginUrl);
     }
-
-    console.log('[Admin Check] Checking admin for user_id:', user.id);
 
     // 시스템 관리자 권한 확인 (maybeSingle 사용 - 결과 없어도 에러 아님)
     const { data: adminData, error: adminError } = await supabase
@@ -62,19 +59,15 @@ export async function updateSession(request: NextRequest) {
       .eq('user_id', user.id)
       .maybeSingle();
 
-    console.log('[Admin Check] Result - adminData:', JSON.stringify(adminData), 'error:', adminError?.message || 'none');
-
     if (adminError) {
       console.error('[Admin Check] Query error:', adminError.code, adminError.message);
     }
 
     if (!adminData) {
       // 관리자가 아닌 경우 홈으로 리디렉트
-      console.log('[Admin Check] Redirecting to /home - no admin data found for user:', user.id);
       return NextResponse.redirect(new URL('/home', request.url));
     }
 
-    console.log('[Admin Check] Admin access granted:', user.id);
     const typedAdminData = adminData as AdminData;
     // 권한 정보를 헤더에 추가 (API에서 사용 가능)
     supabaseResponse.headers.set('x-admin-permissions', JSON.stringify(typedAdminData.permissions));

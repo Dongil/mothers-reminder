@@ -48,13 +48,9 @@ export function usePushNotification(): UsePushNotificationReturn {
   // 지원 여부 및 현재 상태 확인
   useEffect(() => {
     const checkSupport = async () => {
-      console.log('[Push] Checking support...');
-
       const hasServiceWorker = typeof window !== 'undefined' && 'serviceWorker' in navigator;
       const hasPushManager = typeof window !== 'undefined' && 'PushManager' in window;
       const hasNotification = typeof window !== 'undefined' && 'Notification' in window;
-
-      console.log('[Push] Support check:', { hasServiceWorker, hasPushManager, hasNotification });
 
       const supported = hasServiceWorker && hasPushManager && hasNotification;
       setIsSupported(supported);
@@ -68,11 +64,9 @@ export function usePushNotification(): UsePushNotificationReturn {
       }
 
       setPermission(Notification.permission);
-      console.log('[Push] Permission:', Notification.permission);
 
       try {
         // Service Worker가 준비될 때까지 대기 (최대 10초)
-        console.log('[Push] Waiting for SW ready...');
         const registration = await Promise.race([
           navigator.serviceWorker.ready,
           new Promise<null>((_, reject) =>
@@ -86,10 +80,7 @@ export function usePushNotification(): UsePushNotificationReturn {
           return;
         }
 
-        console.log('[Push] SW ready:', registration.scope);
-
         const subscription = await registration.pushManager.getSubscription();
-        console.log('[Push] Existing subscription:', !!subscription);
         setIsSubscribed(!!subscription);
         setError(null);
       } catch (err) {
@@ -107,7 +98,6 @@ export function usePushNotification(): UsePushNotificationReturn {
 
   // 푸시 구독
   const subscribe = useCallback(async (): Promise<boolean> => {
-    console.log('[Push] Subscribe called, isSupported:', isSupported);
     setError(null);
 
     if (!isSupported) {
@@ -119,10 +109,8 @@ export function usePushNotification(): UsePushNotificationReturn {
       setLoading(true);
 
       // 알림 권한 요청
-      console.log('[Push] Requesting permission...');
       const permissionResult = await Notification.requestPermission();
       setPermission(permissionResult);
-      console.log('[Push] Permission result:', permissionResult);
 
       if (permissionResult !== 'granted') {
         setError('알림 권한이 거부되었습니다');
@@ -130,23 +118,18 @@ export function usePushNotification(): UsePushNotificationReturn {
       }
 
       // Service Worker 구독
-      console.log('[Push] Getting SW ready...');
       const registration = await navigator.serviceWorker.ready;
-      console.log('[Push] SW scope:', registration.scope);
 
       const vapidPublicKey = process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY;
-      console.log('[Push] VAPID key exists:', !!vapidPublicKey);
       if (!vapidPublicKey) {
         setError('VAPID 공개키가 설정되지 않음');
         return false;
       }
 
-      console.log('[Push] Subscribing to push manager...');
       const subscription = await registration.pushManager.subscribe({
         userVisibleOnly: true,
         applicationServerKey: urlBase64ToUint8Array(vapidPublicKey) as BufferSource,
       });
-      console.log('[Push] Subscription endpoint:', subscription.endpoint.substring(0, 50) + '...');
 
       // 구독 정보 추출
       const p256dh = subscription.getKey('p256dh');
@@ -158,7 +141,6 @@ export function usePushNotification(): UsePushNotificationReturn {
       }
 
       // 서버에 구독 정보 저장
-      console.log('[Push] Saving subscription to server...');
       const response = await fetch('/api/push-subscriptions', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -173,7 +155,6 @@ export function usePushNotification(): UsePushNotificationReturn {
       });
 
       if (response.ok) {
-        console.log('[Push] Subscription saved successfully');
         setIsSubscribed(true);
         setError(null);
         return true;
