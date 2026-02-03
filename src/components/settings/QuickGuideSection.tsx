@@ -34,15 +34,15 @@ export function QuickGuideSection() {
         className="cursor-pointer"
         onClick={() => setIsOpen(!isOpen)}
       >
-        <CardTitle className="flex items-center justify-between text-base">
+        <CardTitle className="flex items-center justify-between text-base text-gray-900">
           <span className="flex items-center gap-2">
-            <BookOpen className="w-5 h-5" />
+            <BookOpen className="w-5 h-5 text-blue-600" />
             사용 가이드
           </span>
           {isOpen ? (
-            <ChevronUp className="w-5 h-5 text-gray-400" />
+            <ChevronUp className="w-5 h-5 text-gray-500" />
           ) : (
-            <ChevronDown className="w-5 h-5 text-gray-400" />
+            <ChevronDown className="w-5 h-5 text-gray-500" />
           )}
         </CardTitle>
       </CardHeader>
@@ -84,7 +84,7 @@ export function QuickGuideSection() {
 
           {/* 전체 메뉴얼 링크 */}
           <div className="flex flex-col gap-2">
-            <p className="text-sm text-gray-500">
+            <p className="text-sm text-gray-700">
               더 자세한 사용법은 전체 메뉴얼을 참고하세요.
             </p>
             <div className="flex gap-2">
@@ -130,8 +130,8 @@ export function QuickGuideSection() {
 function GuideItem({ title, description }: { title: string; description: string }) {
   return (
     <div className="space-y-1">
-      <h4 className="font-medium text-gray-900">{title}</h4>
-      <p className="text-sm text-gray-600">{description}</p>
+      <h4 className="font-semibold text-gray-900">{title}</h4>
+      <p className="text-sm text-gray-700 leading-relaxed">{description}</p>
     </div>
   );
 }
