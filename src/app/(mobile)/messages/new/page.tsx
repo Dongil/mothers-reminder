@@ -2,18 +2,22 @@
 
 export const dynamic = 'force-dynamic';
 
-import React, { useState } from 'react';
-import { useRouter } from 'next/navigation';
+import React, { useState, Suspense } from 'react';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { ArrowLeft } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { MessageForm } from '@/components/mobile';
 import type { MessageFormData } from '@/components/mobile';
 import { useMessages } from '@/hooks';
 
-export default function NewMessagePage() {
+function NewMessagePageContent() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const { createMessage } = useMessages();
   const [isLoading, setIsLoading] = useState(false);
+
+  // URL에서 date 파라미터 추출
+  const initialDate = searchParams.get('date');
 
   const handleSubmit = async (data: MessageFormData) => {
     setIsLoading(true);
@@ -69,8 +73,20 @@ export default function NewMessagePage() {
 
       {/* 폼 */}
       <main className="p-4">
-        <MessageForm onSubmit={handleSubmit} isLoading={isLoading} />
+        <MessageForm
+          onSubmit={handleSubmit}
+          isLoading={isLoading}
+          initialData={initialDate ? { display_date: initialDate, display_time: '09:00' } : undefined}
+        />
       </main>
     </div>
+  );
+}
+
+export default function NewMessagePage() {
+  return (
+    <Suspense fallback={<div className="min-h-screen bg-gray-50 flex items-center justify-center"><div className="text-gray-400">불러오는 중...</div></div>}>
+      <NewMessagePageContent />
+    </Suspense>
   );
 }

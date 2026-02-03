@@ -25,7 +25,7 @@ function ManagePageContent() {
   const [selectedDate, setSelectedDate] = useState(initialDate);
   const [messages, setMessages] = useState<MessageWithAuthor[]>([]);
   const [loading, setLoading] = useState(true);
-  const supabase = createClient();
+  const supabase = useMemo(() => createClient(), []);
 
   // 반복 메시지 표시 범위: 현재 주 시작 ~ 다음 주 끝 (일~토 기준)
   const today = useMemo(() => parseISO(getTodayString()), []);
@@ -292,26 +292,23 @@ function ManagePageContent() {
                         {/* 메시지 내용 */}
                         <p className="text-gray-900 line-clamp-2">{message.content}</p>
 
-                        {/* 작성자 정보 */}
-                        <div className="mt-2 text-xs text-gray-500">
-                          {message.author?.gender === 'male' ? '👨' :
-                           message.author?.gender === 'female' ? '👩' : '👤'}
-                          {' '}{message.author?.nickname || message.author?.name || '가족'}
+                        {/* 작성자 정보 + TTS 시간 (같은 줄) */}
+                        <div className="mt-2 flex items-center gap-2 flex-wrap text-xs text-gray-500">
+                          <span>
+                            {message.author?.gender === 'male' ? '👨' :
+                             message.author?.gender === 'female' ? '👩' : '👤'}
+                            {' '}{message.author?.nickname || message.author?.name || '가족'}
+                          </span>
+                          {message.tts_times && message.tts_times.length > 0 && (
+                            <>
+                              {message.tts_times.map((time) => (
+                                <span key={time} className="bg-gray-100 text-gray-600 px-2 py-0.5 rounded">
+                                  ⏰ {time}
+                                </span>
+                              ))}
+                            </>
+                          )}
                         </div>
-
-                        {/* TTS 시간 */}
-                        {message.tts_times && message.tts_times.length > 0 && (
-                          <div className="mt-2 flex flex-wrap gap-1">
-                            {message.tts_times.map((time) => (
-                              <span
-                                key={time}
-                                className="text-xs bg-gray-100 text-gray-600 px-2 py-0.5 rounded"
-                              >
-                                ⏰ {time}
-                              </span>
-                            ))}
-                          </div>
-                        )}
                       </div>
 
                       {/* 액션 버튼 */}
@@ -352,6 +349,17 @@ function ManagePageContent() {
                 </Card>
               );
             })}
+
+            {/* 새 메시지 작성 버튼 - 항상 표시 */}
+            <div className="flex justify-center pt-4">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => router.push(`/messages/new?date=${selectedDate}`)}
+              >
+                새 메시지 작성
+              </Button>
+            </div>
           </div>
         )}
       </main>

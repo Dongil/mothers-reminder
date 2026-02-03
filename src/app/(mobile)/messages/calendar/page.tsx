@@ -1,7 +1,7 @@
 'use client';
 
-import React, { useState, useEffect, useCallback, useMemo } from 'react';
-import { useRouter } from 'next/navigation';
+import React, { useState, useEffect, useCallback, useMemo, Suspense } from 'react';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { ChevronLeft, ChevronRight, ArrowLeft, List, Home } from 'lucide-react';
 import {
   format,
@@ -25,15 +25,30 @@ import { shouldDisplayOnDate } from '@/lib/repeat-utils';
 import { useUser } from '@/hooks';
 import type { Message } from '@/types/database';
 
-export default function CalendarPage() {
+function CalendarPageContent() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const { user } = useUser();
-  const [currentMonth, setCurrentMonth] = useState(new Date());
+
+  // URL에서 month 파라미터 읽기 (형식: yyyy-MM)
+  const monthParam = searchParams.get('month');
+  const initialMonth = useMemo(() => {
+    if (monthParam) {
+      const [year, month] = monthParam.split('-').map(Number);
+      if (year && month && month >= 1 && month <= 12) {
+        return new Date(year, month - 1, 1);
+      }
+    }
+    return new Date();
+  }, [monthParam]);
+
+  const [currentMonth, setCurrentMonth] = useState(initialMonth);
   const [messageCounts, setMessageCounts] = useState<Record<string, number>>({});
   const [loading, setLoading] = useState(true);
-  const supabase = createClient();
+  const supabase = useMemo(() => createClient(), []);
 
-  const today = parseISO(getTodayString());
+  // today를 useMemo로 감싸서 불필요한 재생성 방지
+  const today = useMemo(() => parseISO(getTodayString()), []);
 
   // 반복 메시지 표시 범위: 현재 주 시작 ~ 다음 주 끝 (일~토 기준)
   const repeatRangeStart = useMemo(() => startOfWeek(today, { weekStartsOn: 0 }), [today]);
@@ -106,13 +121,17 @@ export default function CalendarPage() {
     fetchMessageCounts();
   }, [fetchMessageCounts]);
 
-  // 월 이동
+  // 월 이동 - URL 업데이트 포함
   const handlePrevMonth = () => {
-    setCurrentMonth(subMonths(currentMonth, 1));
+    const newMonth = subMonths(currentMonth, 1);
+    setCurrentMonth(newMonth);
+    router.replace(`/messages/calendar?month=${format(newMonth, 'yyyy-MM')}`, { scroll: false });
   };
 
   const handleNextMonth = () => {
-    setCurrentMonth(addMonths(currentMonth, 1));
+    const newMonth = addMonths(currentMonth, 1);
+    setCurrentMonth(newMonth);
+    router.replace(`/messages/calendar?month=${format(newMonth, 'yyyy-MM')}`, { scroll: false });
   };
 
   // 날짜 클릭 - 관리 페이지로 이동
@@ -171,9 +190,14 @@ export default function CalendarPage() {
             <ChevronLeft className="w-5 h-5" />
           </Button>
 
-          <h2 className="text-lg font-semibold text-gray-900">
-            {format(currentMonth, 'yyyy년 M월', { locale: ko })}
-          </h2>
+          <div className="text-center">
+            <h2 className="text-lg font-semibold text-gray-900">
+              {format(currentMonth, 'yyyy년 M월', { locale: ko })}
+            </h2>
+            {loading && (
+              <span className="text-xs text-gray-400">불러오는 중...</span>
+            )}
+          </div>
 
           <Button
             variant="outline"
@@ -236,8 +260,8 @@ export default function CalendarPage() {
                   {format(date, 'd')}
                 </span>
 
-                {/* 메시지 개수 표시 */}
-                {isCurrentMonth && count > 0 && (
+                {/* 메시지 개수 표시 - 로딩 중이 아닐 때만 */}
+                {isCurrentMonth && !loading && count > 0 && (
                   <span
                     className={cn(
                       'absolute bottom-1 text-xs font-bold rounded-full min-w-[18px] h-[18px]',
@@ -280,5 +304,13 @@ export default function CalendarPage() {
         </Button>
       </div>
     </div>
+  );
+}
+
+export default function CalendarPage() {
+  return (
+    <Suspense fallback={<div className="min-h-screen bg-gray-50 flex items-center justify-center"><div className="text-gray-400">불러오는 중...</div></div>}>
+      <CalendarPageContent />
+    </Suspense>
   );
 }
