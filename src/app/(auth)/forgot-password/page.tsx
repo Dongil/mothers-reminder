@@ -6,6 +6,7 @@ import { KeyRound, Mail, ArrowLeft, CheckCircle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { createClient } from '@/lib/supabase/client';
 
 export default function ForgotPasswordPage() {
   const [isLoading, setIsLoading] = useState(false);
@@ -19,16 +20,25 @@ export default function ForgotPasswordPage() {
     setError('');
 
     try {
-      const response = await fetch('/api/auth/forgot-password', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email }),
+      // 이메일 형식 검증
+      const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+      if (!emailRegex.test(email)) {
+        throw new Error('유효한 이메일 주소를 입력해주세요');
+      }
+
+      const supabase = createClient();
+      if (!supabase) {
+        throw new Error('인증 시스템 초기화 실패');
+      }
+
+      // 클라이언트에서 직접 호출 (PKCE code_verifier가 localStorage에 저장됨)
+      const { error: resetError } = await supabase.auth.resetPasswordForEmail(email, {
+        redirectTo: `${window.location.origin}/auth/callback/client?type=recovery`,
       });
 
-      const data = await response.json();
-
-      if (!response.ok) {
-        throw new Error(data.error);
+      if (resetError) {
+        console.error('Reset password error:', resetError);
+        // 보안: 항상 성공으로 처리 (이메일 존재 여부 노출 방지)
       }
 
       setIsSuccess(true);
