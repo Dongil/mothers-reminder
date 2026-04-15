@@ -93,16 +93,13 @@ function ResetPasswordContent() {
     setIsLoading(true);
 
     try {
-      const response = await fetch('/api/auth/reset-password', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ password }),
+      // 클라이언트에서 직접 비밀번호 변경 (서버 쿠키 문제 회피)
+      const { error: updateError } = await supabase.auth.updateUser({
+        password,
       });
 
-      const data = await response.json();
-
-      if (!response.ok) {
-        throw new Error(data.error);
+      if (updateError) {
+        throw new Error(updateError.message);
       }
 
       setIsSuccess(true);
