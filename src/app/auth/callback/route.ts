@@ -19,8 +19,8 @@ export async function GET(request: NextRequest) {
     }
 
     // recovery 감지: type 파라미터 또는 세션의 AMR(Authentication Methods Reference) 확인
-    const user = data.session?.user as Record<string, unknown> | undefined;
-    const amr = user?.amr as Array<{ method: string }> | undefined;
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const amr = (data.session?.user as any)?.amr as Array<{ method: string }> | undefined;
     const isRecovery = type === 'recovery'
       || amr?.some((entry) => entry.method === 'recovery');
 
