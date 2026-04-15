@@ -25,10 +25,16 @@ export async function POST(request: NextRequest) {
 
     const supabase = await createClient();
 
+    // 요청 URL에서 origin 추출 (프로덕션/로컬 환경 자동 대응)
+    const origin = request.headers.get('origin')
+      || request.headers.get('referer')?.replace(/\/[^/]*$/, '')
+      || process.env.NEXT_PUBLIC_APP_URL
+      || 'http://localhost:3000';
+
     // 비밀번호 재설정 이메일 발송
     // auth/callback으로 리다이렉트하여 토큰 처리
     const { error } = await supabase.auth.resetPasswordForEmail(email, {
-      redirectTo: `${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}/auth/callback?type=recovery`,
+      redirectTo: `${origin}/auth/callback?type=recovery`,
     });
 
     if (error) {

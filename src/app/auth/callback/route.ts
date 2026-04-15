@@ -10,7 +10,7 @@ export async function GET(request: NextRequest) {
   if (code) {
     const supabase = await createClient();
 
-    const { error } = await supabase.auth.exchangeCodeForSession(code);
+    const { data, error } = await supabase.auth.exchangeCodeForSession(code);
 
     if (error) {
       console.error('Auth exchange error:', error.message);
@@ -18,8 +18,13 @@ export async function GET(request: NextRequest) {
       return NextResponse.redirect(new URL('/login?error=auth_failed', request.url));
     }
 
-    // recovery 타입이면 비밀번호 재설정 페이지로
-    if (type === 'recovery') {
+    // recovery 감지: type 파라미터 또는 세션의 AMR(Authentication Methods Reference) 확인
+    const isRecovery = type === 'recovery'
+      || data.session?.user?.amr?.some(
+        (entry: { method: string }) => entry.method === 'recovery'
+      );
+
+    if (isRecovery) {
       return NextResponse.redirect(new URL('/reset-password', request.url));
     }
 
