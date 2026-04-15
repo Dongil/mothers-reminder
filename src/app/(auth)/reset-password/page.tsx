@@ -94,7 +94,7 @@ function ResetPasswordContent() {
 
     try {
       // 클라이언트에서 직접 비밀번호 변경 (서버 쿠키 문제 회피)
-      const { error: updateError } = await supabase.auth.updateUser({
+      const { error: updateError } = await supabase!.auth.updateUser({
         password,
       });
 
