@@ -4,15 +4,19 @@ import { useEffect, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import { createClient } from '@/lib/supabase/client';
 
+// 모듈 레벨 락 (React StrictMode의 이중 실행 방지)
+let isExchanging = false;
+
 export default function AuthCallbackPage() {
   const router = useRouter();
   const isHandling = useRef(false);
 
   useEffect(() => {
     const handleCallback = async () => {
-      // 중복 실행 방지
-      if (isHandling.current) return;
+      // 이중 실행 방지 (StrictMode + Ref)
+      if (isHandling.current || isExchanging) return;
       isHandling.current = true;
+      isExchanging = true;
 
       const supabase = createClient();
       if (!supabase) {
@@ -20,44 +24,49 @@ export default function AuthCallbackPage() {
         return;
       }
 
-      // 쿼리 파라미터 확인 (PKCE 플로우)
       const urlParams = new URLSearchParams(window.location.search);
       const code = urlParams.get('code');
-      const type = urlParams.get('type'); // PKCE에서 type도 쿼리로 올 수 있음
+      const type = urlParams.get('type');
 
-      // PKCE 플로우 처리
+      console.log('[AUTH_CALLBACK_CLIENT] code:', !!code, 'type:', type);
+
+      // PKCE 플로우
       if (code) {
-        // PASSWORD_RECOVERY 이벤트 리스너 설정
-        const { data: { subscription } } = supabase.auth.onAuthStateChange((event) => {
-          if (event === 'PASSWORD_RECOVERY') {
-            subscription.unsubscribe();
+        // 이미 세션이 있으면 exchange 건너뛰기 (재방문 시)
+        const { data: { session: existingSession } } = await supabase.auth.getSession();
+        if (existingSession) {
+          console.log('[AUTH_CALLBACK_CLIENT] Existing session found, skipping exchange');
+          if (type === 'recovery') {
             router.push('/reset-password');
+          } else {
+            router.push('/home');
           }
-        });
+          return;
+        }
 
-        const { error } = await supabase.auth.exchangeCodeForSession(code);
+        const { data, error } = await supabase.auth.exchangeCodeForSession(code);
+
+        console.log('[AUTH_CALLBACK_CLIENT] exchange result:', { error: error?.message, hasSession: !!data?.session });
 
         if (error) {
           console.error('Auth exchange error:', error);
-          subscription.unsubscribe();
+          // 이미 다른 곳에서 exchange가 성공했을 수 있으니 세션 재확인
+          const { data: { session } } = await supabase.auth.getSession();
+          if (session) {
+            console.log('[AUTH_CALLBACK_CLIENT] Session exists after error, treating as recovery');
+            router.push(type === 'recovery' ? '/reset-password' : '/home');
+            return;
+          }
           router.push('/login?error=auth_failed');
           return;
         }
 
-        // 이벤트가 발생하지 않은 경우를 위해 약간의 대기 후 처리
-        // (PASSWORD_RECOVERY 이벤트가 발생하면 위 리스너가 처리)
-        setTimeout(() => {
-          // 아직 페이지 이동이 안됐으면 기본 동작
-          if (window.location.pathname === '/auth/callback') {
-            subscription.unsubscribe();
-            // recovery 타입이 쿼리에 있으면 비밀번호 재설정
-            if (type === 'recovery') {
-              router.push('/reset-password');
-            } else {
-              router.push('/home');
-            }
-          }
-        }, 500);
+        // exchange 성공 → recovery면 reset-password, 아니면 home
+        if (type === 'recovery') {
+          router.push('/reset-password');
+        } else {
+          router.push('/home');
+        }
         return;
       }
 
@@ -69,8 +78,6 @@ export default function AuthCallbackPage() {
         const refreshToken = params.get('refresh_token');
         const hashType = params.get('type');
 
-
-        // recovery 타입이면 비밀번호 재설정
         if (hashType === 'recovery' && accessToken) {
           const { error } = await supabase.auth.setSession({
             access_token: accessToken,
@@ -87,7 +94,6 @@ export default function AuthCallbackPage() {
           return;
         }
 
-        // 다른 타입 (signup, magiclink 등)
         if (accessToken) {
           const { error } = await supabase.auth.setSession({
             access_token: accessToken,
@@ -101,11 +107,13 @@ export default function AuthCallbackPage() {
         }
       }
 
-      // 기본 리다이렉트
       router.push('/login');
     };
 
-    handleCallback();
+    handleCallback().finally(() => {
+      // 페이지 언마운트 시 락 해제
+      setTimeout(() => { isExchanging = false; }, 1000);
+    });
   }, [router]);
 
   return (
