@@ -31,15 +31,11 @@ export default function ForgotPasswordPage() {
         throw new Error('인증 시스템 초기화 실패');
       }
 
-      // 클라이언트에서 직접 호출 (PKCE code_verifier가 localStorage에 저장됨)
-      const { error: resetError } = await supabase.auth.resetPasswordForEmail(email, {
+      // 클라이언트에서 직접 호출 (PKCE code_verifier가 cookie에 저장됨)
+      // 보안: 결과와 무관하게 항상 성공으로 처리 (이메일 존재 여부 노출 방지)
+      await supabase.auth.resetPasswordForEmail(email, {
         redirectTo: `${window.location.origin}/auth/callback/client?type=recovery`,
       });
-
-      if (resetError) {
-        console.error('Reset password error:', resetError);
-        // 보안: 항상 성공으로 처리 (이메일 존재 여부 노출 방지)
-      }
 
       setIsSuccess(true);
     } catch (err) {

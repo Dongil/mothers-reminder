@@ -7,15 +7,10 @@ export async function GET(request: NextRequest) {
   const type = requestUrl.searchParams.get('type');
   const next = requestUrl.searchParams.get('next') || '/home';
 
-  console.log('[AUTH_CALLBACK] URL:', request.url);
-  console.log('[AUTH_CALLBACK] code:', code ? 'present' : 'missing', 'type:', type);
-
   if (code) {
     const supabase = await createClient();
 
     const { data, error } = await supabase.auth.exchangeCodeForSession(code);
-
-    console.log('[AUTH_CALLBACK] exchange result - error:', error?.message, 'session:', !!data?.session);
 
     if (error) {
       console.error('Auth exchange error:', error.message);
@@ -28,8 +23,6 @@ export async function GET(request: NextRequest) {
     const amr = (data.session?.user as any)?.amr as Array<{ method: string }> | undefined;
     const isRecovery = type === 'recovery'
       || amr?.some((entry) => entry.method === 'recovery');
-
-    console.log('[AUTH_CALLBACK] amr:', JSON.stringify(amr), 'isRecovery:', isRecovery);
 
     if (isRecovery) {
       return NextResponse.redirect(new URL('/reset-password', request.url));

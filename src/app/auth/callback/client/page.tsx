@@ -28,14 +28,11 @@ export default function AuthCallbackPage() {
       const code = urlParams.get('code');
       const type = urlParams.get('type');
 
-      console.log('[AUTH_CALLBACK_CLIENT] code:', !!code, 'type:', type);
-
       // PKCE 플로우
       if (code) {
         // 이미 세션이 있으면 exchange 건너뛰기 (재방문 시)
         const { data: { session: existingSession } } = await supabase.auth.getSession();
         if (existingSession) {
-          console.log('[AUTH_CALLBACK_CLIENT] Existing session found, skipping exchange');
           if (type === 'recovery') {
             router.push('/reset-password');
           } else {
@@ -44,16 +41,12 @@ export default function AuthCallbackPage() {
           return;
         }
 
-        const { data, error } = await supabase.auth.exchangeCodeForSession(code);
-
-        console.log('[AUTH_CALLBACK_CLIENT] exchange result:', { error: error?.message, hasSession: !!data?.session });
+        const { error } = await supabase.auth.exchangeCodeForSession(code);
 
         if (error) {
-          console.error('Auth exchange error:', error);
           // 이미 다른 곳에서 exchange가 성공했을 수 있으니 세션 재확인
           const { data: { session } } = await supabase.auth.getSession();
           if (session) {
-            console.log('[AUTH_CALLBACK_CLIENT] Session exists after error, treating as recovery');
             router.push(type === 'recovery' ? '/reset-password' : '/home');
             return;
           }
