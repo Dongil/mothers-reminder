@@ -33,28 +33,55 @@ function LoginContent() {
 
   // Supabase 비밀번호 재설정 링크 감지 및 리다이렉트
   useEffect(() => {
-    // URL 해시에서 토큰 확인 (Supabase가 #access_token=...&type=recovery 형식으로 보냄)
+    if (!supabase) return;
+
+    // 1. PKCE code 파라미터 처리 (Supabase redirect fallback)
+    const code = searchParams.get('code');
+    if (code) {
+      const handleCode = async () => {
+        const { data: { subscription } } = supabase.auth.onAuthStateChange((event) => {
+          if (event === 'PASSWORD_RECOVERY') {
+            subscription.unsubscribe();
+            router.replace('/reset-password');
+          }
+        });
+
+        const { error: exchangeError } = await supabase.auth.exchangeCodeForSession(code);
+        if (!exchangeError) {
+          setTimeout(() => {
+            if (window.location.pathname === '/login') {
+              subscription.unsubscribe();
+              router.replace('/home');
+            }
+          }, 500);
+        } else {
+          subscription.unsubscribe();
+        }
+      };
+      handleCode();
+      return;
+    }
+
+    // 2. URL 해시에서 토큰 확인 (Implicit 플로우)
     const hash = window.location.hash;
     if (hash && hash.includes('type=recovery')) {
-      // 해시를 쿼리 파라미터로 변환하여 reset-password로 리다이렉트
       const hashParams = new URLSearchParams(hash.substring(1));
       const accessToken = hashParams.get('access_token');
       const refreshToken = hashParams.get('refresh_token');
 
       if (accessToken) {
-        // 토큰으로 세션 설정 후 비밀번호 변경 페이지로 이동
         router.push(`/reset-password?access_token=${accessToken}&refresh_token=${refreshToken || ''}`);
         return;
       }
     }
 
-    // 쿼리 파라미터에서 확인 (일부 Supabase 설정에서 사용)
+    // 3. 쿼리 파라미터에서 확인 (일부 Supabase 설정에서 사용)
     const type = searchParams.get('type');
     const tokenHash = searchParams.get('token_hash');
     if (type === 'recovery' && tokenHash) {
       router.push(`/reset-password?token_hash=${tokenHash}&type=recovery`);
     }
-  }, [router, searchParams]);
+  }, [router, searchParams, supabase]);
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();

@@ -18,7 +18,33 @@ export default function Home() {
         return;
       }
 
-      // 1. URL 해시에서 recovery 타입 확인 (비밀번호 재설정 플로우)
+      // 1. PKCE code 파라미터 처리 (Supabase redirect fallback)
+      const urlParams = new URLSearchParams(window.location.search);
+      const code = urlParams.get('code');
+      if (code) {
+        // PASSWORD_RECOVERY 이벤트 감지 리스너
+        const { data: { subscription: recoverySub } } = supabase.auth.onAuthStateChange((event) => {
+          if (event === 'PASSWORD_RECOVERY') {
+            recoverySub.unsubscribe();
+            router.replace('/reset-password');
+          }
+        });
+
+        const { error } = await supabase.auth.exchangeCodeForSession(code);
+        if (!error) {
+          // 이벤트 발생 대기 후 처리
+          setTimeout(() => {
+            if (window.location.pathname === '/') {
+              recoverySub.unsubscribe();
+              router.replace('/home');
+            }
+          }, 500);
+          return;
+        }
+        recoverySub.unsubscribe();
+      }
+
+      // 2. URL 해시에서 recovery 타입 확인 (Implicit 플로우)
       const hash = window.location.hash.substring(1);
       if (hash) {
         const params = new URLSearchParams(hash);
@@ -37,14 +63,14 @@ export default function Home() {
         }
       }
 
-      // 2. 인증 이벤트 리스너 설정 (PASSWORD_RECOVERY 감지)
+      // 3. 인증 이벤트 리스너 설정 (PASSWORD_RECOVERY 감지)
       const { data: { subscription } } = supabase.auth.onAuthStateChange((event) => {
         if (event === 'PASSWORD_RECOVERY') {
           router.replace('/reset-password');
         }
       });
 
-      // 3. 인증 상태 확인
+      // 4. 인증 상태 확인
       const { data: { session } } = await supabase.auth.getSession();
 
       // 로그인 안 되어 있으면 /login으로
