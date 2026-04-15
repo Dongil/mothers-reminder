@@ -30,6 +30,10 @@ interface NotificationOptions {
   soundEnabled?: boolean;
   ttsEnabled?: boolean;
   soundUrl?: string;
+  /** TTS 목소리 (Google Cloud TTS voice name) */
+  voice?: string;
+  /** TTS 속도 (0.25 ~ 4.0) */
+  speed?: number;
 }
 
 /**
@@ -99,12 +103,24 @@ export function useNotifications(options: NotificationOptions = {}): UseNotifica
     soundEnabled = true,
     ttsEnabled = true,
     soundUrl = '/sounds/chime.mp3',
+    voice,
+    speed,
   } = options;
+
+  // 항상 최신 voice/speed 참조 (closure 캡처 방지)
+  const voiceRef = useRef<string | undefined>(voice);
+  const speedRef = useRef<number | undefined>(speed);
+  useEffect(() => { voiceRef.current = voice; }, [voice]);
+  useEffect(() => { speedRef.current = speed; }, [speed]);
 
   const [permission, setPermission] = useState<NotificationPermission>('default');
   /** 메시지ID → 스케줄된 알림 배열 매핑 */
   const scheduledRef = useRef<Map<string, ScheduledNotification[]>>(new Map());
   const [scheduledCount, setScheduledCount] = useState(0);
+  /** 시간(HH:MM) → 해당 시간 알림 큐 매핑 (같은 시간 메시지 순차 재생용) */
+  const timeQueueRef = useRef<Map<string, Message[]>>(new Map());
+  /** 시간별 큐 실행 setTimeout ID */
+  const timeQueueTimerRef = useRef<Map<string, NodeJS.Timeout>>(new Map());
   /** 차임벨 오디오 요소 */
   const audioRef = useRef<HTMLAudioElement | null>(null);
   /** 긴급 알림 오디오 요소 */
@@ -171,8 +187,13 @@ export function useNotifications(options: NotificationOptions = {}): UseNotifica
     if (!soundEnabled || !audioRef.current) return;
 
     try {
-      audioRef.current.currentTime = 0;
-      await audioRef.current.play();
+      const audio = audioRef.current;
+      audio.currentTime = 0;
+      await new Promise<void>((resolve) => {
+        const onEnd = () => { audio.removeEventListener('ended', onEnd); resolve(); };
+        audio.addEventListener('ended', onEnd);
+        audio.play().catch(() => { audio.removeEventListener('ended', onEnd); resolve(); });
+      });
     } catch (error) {
       console.error('Chime play error:', error);
     }
@@ -187,8 +208,13 @@ export function useNotifications(options: NotificationOptions = {}): UseNotifica
     if (!alertAudioRef.current) return;
 
     try {
-      alertAudioRef.current.currentTime = 0;
-      await alertAudioRef.current.play();
+      const audio = alertAudioRef.current;
+      audio.currentTime = 0;
+      await new Promise<void>((resolve) => {
+        const onEnd = () => { audio.removeEventListener('ended', onEnd); resolve(); };
+        audio.addEventListener('ended', onEnd);
+        audio.play().catch(() => { audio.removeEventListener('ended', onEnd); resolve(); });
+      });
     } catch (error) {
       console.error('Alert play error:', error);
     }
@@ -204,10 +230,14 @@ export function useNotifications(options: NotificationOptions = {}): UseNotifica
    */
   const speakWithCloudTTS = useCallback(async (text: string) => {
     try {
+      const body: { text: string; voice?: string; speed?: number } = { text };
+      if (voiceRef.current) body.voice = voiceRef.current;
+      if (typeof speedRef.current === 'number') body.speed = speedRef.current;
+
       const response = await fetch('/api/tts', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ text }),
+        body: JSON.stringify(body),
       });
 
       if (!response.ok) {
@@ -217,7 +247,12 @@ export function useNotifications(options: NotificationOptions = {}): UseNotifica
 
       const data = await response.json();
       const audio = new Audio(`data:audio/mp3;base64,${data.audioContent}`);
-      await audio.play();
+      // 재생 완료까지 대기 (순차 재생을 위함)
+      await new Promise<void>((resolve) => {
+        audio.onended = () => resolve();
+        audio.onerror = () => resolve();
+        audio.play().catch(() => resolve());
+      });
     } catch (error) {
       console.error('Cloud TTS error:', error);
     }
@@ -236,7 +271,7 @@ export function useNotifications(options: NotificationOptions = {}): UseNotifica
    * @param {Message} message - 표시할 메시지
    */
   const showNotification = useCallback(async (message: Message) => {
-    // 소리 재생
+    // 소리 재생 (완료까지 대기)
     if (soundEnabled) {
       if (message.priority === 'urgent') {
         await playAlert();
@@ -245,7 +280,7 @@ export function useNotifications(options: NotificationOptions = {}): UseNotifica
       }
     }
 
-    // TTS 재생 (Cloud TTS 사용)
+    // TTS 재생 (완료까지 대기)
     if (ttsEnabled && message.tts_enabled) {
       await speakWithCloudTTS(message.content);
     }
@@ -265,6 +300,32 @@ export function useNotifications(options: NotificationOptions = {}): UseNotifica
       }
     }
   }, [permission, soundEnabled, ttsEnabled, playChime, playAlert, speakWithCloudTTS]);
+
+  /**
+   * runQueueForTime - 특정 시간의 메시지 큐 순차 실행
+   *
+   * 같은 시간에 여러 메시지가 있으면 차례대로:
+   *   알림음 → 메시지1 TTS → 5초 쉼 → 알림음 → 메시지2 TTS → ...
+   */
+  const runQueueForTime = useCallback(async (time: string) => {
+    const queue = timeQueueRef.current.get(time);
+    if (!queue || queue.length === 0) return;
+    timeQueueRef.current.delete(time);
+    timeQueueTimerRef.current.delete(time);
+
+    for (let i = 0; i < queue.length; i++) {
+      const msg = queue[i];
+      try {
+        await showNotification(msg);
+      } catch (e) {
+        console.error('Queue notification error:', e);
+      }
+      // 마지막 메시지가 아니면 5초 대기
+      if (i < queue.length - 1) {
+        await new Promise<void>((resolve) => setTimeout(resolve, 5000));
+      }
+    }
+  }, [showNotification]);
 
   /**
    * scheduleOne - 단일 알림 스케줄링
@@ -293,25 +354,26 @@ export function useNotifications(options: NotificationOptions = {}): UseNotifica
       return null;
     }
 
-    const delay = scheduledTime.getTime() - now.getTime();
+    // 같은 시간 큐에 메시지 추가
+    const queue = timeQueueRef.current.get(time) || [];
+    queue.push(message);
+    timeQueueRef.current.set(time, queue);
 
-    // setTimeout으로 예약
-    const timeoutId = setTimeout(() => {
-      showNotification(message);
-
-      // 스케줄에서 제거
-      const scheduled = scheduledRef.current.get(message.id) || [];
-      const updated = scheduled.filter((s) => s.time !== time);
-      if (updated.length > 0) {
-        scheduledRef.current.set(message.id, updated);
-      } else {
-        scheduledRef.current.delete(message.id);
-      }
-      setScheduledCount((prev) => prev - 1);
-    }, delay);
+    // 해당 시간 타이머가 이미 있으면 재사용 (큐만 추가)
+    let timeoutId = timeQueueTimerRef.current.get(time);
+    if (!timeoutId) {
+      const delay = scheduledTime.getTime() - now.getTime();
+      timeoutId = setTimeout(() => {
+        runQueueForTime(time);
+        // 스케줄 카운트 정리
+        const queued = timeQueueRef.current.get(time)?.length || 0;
+        setScheduledCount((prev) => Math.max(0, prev - queued));
+      }, delay);
+      timeQueueTimerRef.current.set(time, timeoutId);
+    }
 
     return { messageId: message.id, time, timeoutId };
-  }, [showNotification]);
+  }, [runQueueForTime]);
 
   /**
    * scheduleNotifications - 메시지 목록 알림 스케줄링
@@ -323,9 +385,9 @@ export function useNotifications(options: NotificationOptions = {}): UseNotifica
    */
   const scheduleNotifications = useCallback((messages: Message[]) => {
     // 기존 스케줄 취소
-    scheduledRef.current.forEach((notifications) => {
-      notifications.forEach((n) => clearTimeout(n.timeoutId));
-    });
+    timeQueueTimerRef.current.forEach((id) => clearTimeout(id));
+    timeQueueTimerRef.current.clear();
+    timeQueueRef.current.clear();
     scheduledRef.current.clear();
     setScheduledCount(0);
 
@@ -377,9 +439,9 @@ export function useNotifications(options: NotificationOptions = {}): UseNotifica
    * 컴포넌트 언마운트 시 자동으로 호출됩니다.
    */
   const cancelAllNotifications = useCallback(() => {
-    scheduledRef.current.forEach((notifications) => {
-      notifications.forEach((n) => clearTimeout(n.timeoutId));
-    });
+    timeQueueTimerRef.current.forEach((id) => clearTimeout(id));
+    timeQueueTimerRef.current.clear();
+    timeQueueRef.current.clear();
     scheduledRef.current.clear();
     setScheduledCount(0);
   }, []);

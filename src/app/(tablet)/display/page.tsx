@@ -158,6 +158,8 @@ export default function DisplayPage() {
   const { scheduleNotifications, requestPermission } = useNotifications({
     soundEnabled: true,
     ttsEnabled: true,
+    voice: settings?.tts_voice || undefined,
+    speed: typeof settings?.tts_speed === 'number' ? settings.tts_speed : undefined,
   });
 
   /**
